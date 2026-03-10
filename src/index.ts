@@ -18,13 +18,21 @@ export { UnsatisfiableConstraintError } from "./errors/UnsatisfiableConstraintEr
 export { UnsatisfiedRangeError } from "./errors/UnsatisfiedRangeError.js";
 export { VersionFetchError } from "./errors/VersionFetchError.js";
 export { VersionNotFoundError } from "./errors/VersionNotFoundError.js";
-
+// Layers
+export { SemVerParserLive } from "./layers/SemVerParserLive.js";
 // Order
 export { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
-
 // Schemas
 export { Comparator } from "./schemas/Comparator.js";
 export type { ComparatorSet } from "./schemas/Range.js";
 export { Range } from "./schemas/Range.js";
 export { SemVer } from "./schemas/SemVer.js";
 export { VersionDiff } from "./schemas/VersionDiff.js";
+// Services
+export { SemVerParser } from "./services/SemVerParser.js";
+// Convenience parsing functions
+export {
+	parseRangeSet as parseRange,
+	parseSingleComparator as parseComparator,
+	parseValidSemVer as parseVersion,
+} from "./utils/grammar.js";
