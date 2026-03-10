@@ -14,7 +14,7 @@ export const bumpPrerelease = (v: SemVer, id?: string): SemVer => {
 
 	if (pre.length === 0) {
 		// No prerelease: bump patch and add prerelease
-		return sv(v.major, v.minor, v.patch + 1, [id ?? "0", 0]);
+		return id !== undefined ? sv(v.major, v.minor, v.patch + 1, [id, 0]) : sv(v.major, v.minor, v.patch + 1, [0]);
 	}
 
 	// Has prerelease

@@ -58,11 +58,11 @@ describe("bumpPatch", () => {
 });
 
 describe("bumpPrerelease", () => {
-	it("1.0.0 with no id -> 1.0.1-0.0", () => {
+	it("1.0.0 with no id -> 1.0.1-0", () => {
 		const result = bumpPrerelease(v(1, 0, 0));
-		expect(result.toString()).toBe("1.0.1-0.0");
+		expect(result.toString()).toBe("1.0.1-0");
 		expect(result.patch).toBe(1);
-		expect(result.prerelease).toEqual(["0", 0]);
+		expect(result.prerelease).toEqual([0]);
 	});
 
 	it("1.0.0-alpha.1 with no id -> 1.0.0-alpha.2", () => {
