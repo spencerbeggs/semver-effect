@@ -1,12 +1,15 @@
 {
-	"name": "@spencerbeggs/pnpm-module-template",
+	"name": "semver-effect",
 	"version": "0.0.0",
 	"private": true,
-	"description": "A template repository for developing and deploying Node.js modules from a pnpm monorepo structure.",
-	"homepage": "https://github.com/spencerbeggs/pnpm-module-template#readme",
+	"description": "Strict SemVer 2.0.0 implementation built on Effect, providing typed parsing, range algebra and version cache services.",
+	"homepage": "https://github.com/spencerbeggs/semver-effect#readme",
+	"bugs": {
+		"url": "https://github.com/spencerbeggs/semver-effect/issues"
+	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/spencerbeggs/pnpm-module-template.git"
+		"url": "git+https://github.com/spencerbeggs/semver-effect.git"
 	},
 	"license": "MIT",
 	"author": {
@@ -70,7 +73,7 @@
 			{
 				"protocol": "npm",
 				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm",
+				"directory": "dist/github",
 				"access": "public",
 				"provenance": true
 			},

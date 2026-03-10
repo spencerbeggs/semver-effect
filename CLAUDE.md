@@ -5,10 +5,22 @@ code in this repository.
 
 ## Project Status
 
-This is a **base template repository** in initial state. The design
-documentation system (`.claude/` skills and agents) is included but no design
-docs exist yet. To begin planning and documenting architecture decisions, run
-`/design-init` to create your first design document.
+**semver-effect** -- a strict SemVer 2.0.0 implementation built on Effect-TS.
+ESM-only, no loose mode, no coercion. Effect-native API with typed errors.
+
+Status: Design phase complete, implementation not yet started.
+
+## Design Documentation
+
+Design docs are in `.claude/design/semver-effect/`:
+
+- `architecture.md` -- System overview, decisions, component structure
+- `data-model.md` -- Core types: SemVer, Comparator, Range, VersionDiff
+- `parser.md` -- Recursive descent parser, BNF grammar, desugaring
+- `error-model.md` -- TaggedError hierarchy with field specs
+- `operations.md` -- Comparison, range matching, range algebra, diffing
+- `version-cache.md` -- VersionCache service API and internals
+- `testing.md` -- Test strategy, coverage targets, Effect patterns
 
 ## Commands
 
@@ -83,6 +95,29 @@ Turbo tasks define dependencies: `typecheck` depends on `build` completing first
   `--project` flag
 
 ## Conventions
+
+### Source Organization
+
+```text
+src/
+├── index.ts              (ONLY barrel export -- no other barrels)
+├── schemas/              (Schema.TaggedClass types)
+├── errors/               (one TaggedError per file, split base pattern)
+├── services/             (interface + Context.GenericTag, no implementation)
+├── layers/               (Layer implementations -- the "Live" variants)
+└── utils/                (pure helpers, parser internals)
+__test__/                 (tests, adjacent to src/)
+└── utils/                (shared test helpers)
+```
+
+### Effect Patterns
+
+- **Services**: `interface Foo` + `Context.GenericTag<Foo>("Foo")` (NOT
+  `Context.Tag` class -- avoids un-nameable `_base` in declaration files)
+- **Errors**: Split base pattern for api-extractor compatibility:
+  `export const FooBase = Data.TaggedError("Foo")` (`@internal`) +
+  `export class Foo extends FooBase<{...}> {}`
+- **No barrel files** in subdirectories -- all imports go directly to source
 
 ### Imports
 
