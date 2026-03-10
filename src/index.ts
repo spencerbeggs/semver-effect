@@ -1,18 +1,8 @@
 /**
- * \@savvy-web/example-module
+ * semver-effect
  *
- * Version-aware type definition registry for TypeScript documentation with Twoslash.
- * Built with Effect for robust error handling and composable async operations.
+ * Strict SemVer 2.0.0 implementation built on Effect, providing typed
+ * parsing, range algebra, and version cache services.
  *
  * @packageDocumentation
  */
-
-export interface Foo {
-	baz: number;
-}
-
-export class Bar {
-	qux(): Foo {
-		return { baz: 42 };
-	}
-}

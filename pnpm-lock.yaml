@@ -32,6 +32,9 @@ importers:
       '@savvy-web/vitest':
         specifier: ^0.2.0
         version: 0.2.0(@types/node@25.4.0)(@typescript/native-preview@7.0.0-dev.20260310.1)(@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@25.4.0)(jiti@2.6.1)(yaml@2.8.2)))(typescript@5.9.3)(vitest@4.0.18(@types/node@25.4.0)(jiti@2.6.1)(yaml@2.8.2))
+      effect:
+        specifier: ^3.19.19
+        version: 3.19.19
     publishDirectory: dist/dev
 
 packages:
