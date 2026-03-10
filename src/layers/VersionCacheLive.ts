@@ -3,6 +3,7 @@ import { EmptyCacheError } from "../errors/EmptyCacheError.js";
 import { UnsatisfiedRangeError } from "../errors/UnsatisfiedRangeError.js";
 import { VersionNotFoundError } from "../errors/VersionNotFoundError.js";
 import { SemVerOrder } from "../order.js";
+import type { Range } from "../schemas/Range.js";
 import type { SemVer } from "../schemas/SemVer.js";
 import { SemVerParser } from "../services/SemVerParser.js";
 import { VersionCache } from "../services/VersionCache.js";
@@ -23,6 +24,17 @@ export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = 
 	Effect.gen(function* () {
 		const parser = yield* SemVerParser;
 		const ref = yield* Ref.make(SortedSet.empty<SemVer>(SemVerOrder));
+
+		const resolveFromRef = (range: Range) =>
+			Effect.flatMap(Ref.get(ref), (set) => {
+				const arr = toArray(set);
+				for (let i = arr.length - 1; i >= 0; i--) {
+					if (matchSatisfies(arr[i], range)) {
+						return Effect.succeed(arr[i]);
+					}
+				}
+				return Effect.fail(new UnsatisfiedRangeError({ range, available: arr }));
+			});
 
 		return VersionCache.of({
 			load: (versions) => Ref.set(ref, SortedSet.fromIterable(versions, SemVerOrder)),
@@ -49,29 +61,9 @@ export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = 
 					return Effect.succeed(arr[0]);
 				}),
 
-			resolve: (range) =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					const arr = toArray(set);
-					for (let i = arr.length - 1; i >= 0; i--) {
-						if (matchSatisfies(arr[i], range)) {
-							return Effect.succeed(arr[i]);
-						}
-					}
-					return Effect.fail(new UnsatisfiedRangeError({ range, available: arr }));
-				}),
+			resolve: (range) => resolveFromRef(range),
 
-			resolveString: (input) =>
-				Effect.flatMap(parser.parseRange(input), (range) =>
-					Effect.flatMap(Ref.get(ref), (set) => {
-						const arr = toArray(set);
-						for (let i = arr.length - 1; i >= 0; i--) {
-							if (matchSatisfies(arr[i], range)) {
-								return Effect.succeed(arr[i]);
-							}
-						}
-						return Effect.fail(new UnsatisfiedRangeError({ range, available: arr }));
-					}),
-				),
+			resolveString: (input) => Effect.flatMap(parser.parseRange(input), resolveFromRef),
 
 			filter: (range) =>
 				Effect.flatMap(Ref.get(ref), (set) => {
