@@ -303,3 +303,106 @@ describe("VersionDiff", () => {
 		});
 	});
 });
+
+describe("VersionDiff toString and toJSON", () => {
+	it("toString formats as type (from → to)", () => {
+		const d = new VersionDiff(
+			{
+				type: "minor",
+				from: v(1, 2, 0),
+				to: v(1, 3, 0),
+				major: 0,
+				minor: 1,
+				patch: 0,
+			},
+			{ disableValidation: true },
+		);
+		expect(d.toString()).toBe("minor (1.2.0 → 1.3.0)");
+	});
+
+	it("toString with none type", () => {
+		const d = new VersionDiff(
+			{
+				type: "none",
+				from: v(1, 0, 0),
+				to: v(1, 0, 0),
+				major: 0,
+				minor: 0,
+				patch: 0,
+			},
+			{ disableValidation: true },
+		);
+		expect(d.toString()).toBe("none (1.0.0 → 1.0.0)");
+	});
+
+	it("toString with prerelease versions", () => {
+		const d = new VersionDiff(
+			{
+				type: "prerelease",
+				from: v(1, 0, 0, ["alpha"]),
+				to: v(1, 0, 0, ["beta"]),
+				major: 0,
+				minor: 0,
+				patch: 0,
+			},
+			{ disableValidation: true },
+		);
+		expect(d.toString()).toBe("prerelease (1.0.0-alpha → 1.0.0-beta)");
+	});
+
+	it("toJSON includes _tag and all fields", () => {
+		const d = new VersionDiff(
+			{
+				type: "major",
+				from: v(1, 0, 0),
+				to: v(2, 0, 0),
+				major: 1,
+				minor: 0,
+				patch: 0,
+			},
+			{ disableValidation: true },
+		);
+		const json = d.toJSON() as Record<string, unknown>;
+		expect(json._tag).toBe("VersionDiff");
+		expect(json.type).toBe("major");
+		expect(json.major).toBe(1);
+	});
+
+	it("toJSON nests from/to as SemVer JSON", () => {
+		const d = new VersionDiff(
+			{
+				type: "patch",
+				from: v(1, 0, 0),
+				to: v(1, 0, 1),
+				major: 0,
+				minor: 0,
+				patch: 1,
+			},
+			{ disableValidation: true },
+		);
+		const json = d.toJSON() as Record<string, unknown>;
+		const from = json.from as Record<string, unknown>;
+		expect(from._tag).toBe("SemVer");
+		expect(from.major).toBe(1);
+	});
+});
+
+describe("SemVer toJSON", () => {
+	it("returns tagged JSON object", () => {
+		const sv = v(1, 2, 3, ["alpha"], ["build"]);
+		const json = sv.toJSON() as Record<string, unknown>;
+		expect(json._tag).toBe("SemVer");
+		expect(json.major).toBe(1);
+		expect(json.minor).toBe(2);
+		expect(json.patch).toBe(3);
+		expect(json.prerelease).toEqual(["alpha"]);
+		expect(json.build).toEqual(["build"]);
+	});
+
+	it("returns empty arrays for no prerelease/build", () => {
+		const sv = v(0, 0, 1);
+		const json = sv.toJSON() as Record<string, unknown>;
+		expect(json.prerelease).toEqual([]);
+		expect(json.build).toEqual([]);
+	});
+});
