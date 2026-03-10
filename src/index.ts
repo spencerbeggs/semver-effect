@@ -62,3 +62,5 @@ export { parseSingleComparator as parseComparator, parseValidSemVer as parseVers
 // Matching
 export { filter, maxSatisfying, minSatisfying, satisfies } from "./utils/matching.js";
 export { parseRange } from "./utils/parseRange.js";
+// Pretty print
+export { prettyPrint } from "./utils/prettyPrint.js";
