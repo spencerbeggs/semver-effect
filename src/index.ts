@@ -31,8 +31,5 @@ export { VersionDiff } from "./schemas/VersionDiff.js";
 // Services
 export { SemVerParser } from "./services/SemVerParser.js";
 // Convenience parsing functions
-export {
-	parseRangeSet as parseRange,
-	parseSingleComparator as parseComparator,
-	parseValidSemVer as parseVersion,
-} from "./utils/grammar.js";
+export { parseSingleComparator as parseComparator, parseValidSemVer as parseVersion } from "./utils/grammar.js";
+export { parseRange } from "./utils/parseRange.js";
