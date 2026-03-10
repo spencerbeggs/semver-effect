@@ -30,6 +30,32 @@ export { SemVer } from "./schemas/SemVer.js";
 export { VersionDiff } from "./schemas/VersionDiff.js";
 // Services
 export { SemVerParser } from "./services/SemVerParser.js";
+// Algebra
+export { equivalent, intersect, isSubset, simplify, union } from "./utils/algebra.js";
+// Bump
+export { bumpMajor, bumpMinor, bumpPatch, bumpPrerelease, bumpRelease } from "./utils/bump.js";
+// Comparison
+export {
+	compare,
+	compareWithBuild,
+	equal,
+	gt,
+	gte,
+	isPrerelease,
+	isStable,
+	lt,
+	lte,
+	max,
+	min,
+	neq,
+	rsort,
+	sort,
+	truncate,
+} from "./utils/compare.js";
+// Diff
+export { diff } from "./utils/diff.js";
 // Convenience parsing functions
 export { parseSingleComparator as parseComparator, parseValidSemVer as parseVersion } from "./utils/grammar.js";
+// Matching
+export { filter, maxSatisfying, minSatisfying, satisfies } from "./utils/matching.js";
 export { parseRange } from "./utils/parseRange.js";
