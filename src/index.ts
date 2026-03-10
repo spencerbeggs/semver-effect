@@ -20,6 +20,7 @@ export { VersionFetchError } from "./errors/VersionFetchError.js";
 export { VersionNotFoundError } from "./errors/VersionNotFoundError.js";
 // Layers
 export { SemVerParserLive } from "./layers/SemVerParserLive.js";
+export { VersionCacheLive } from "./layers/VersionCacheLive.js";
 // Order
 export { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
 // Schemas
@@ -30,6 +31,8 @@ export { SemVer } from "./schemas/SemVer.js";
 export { VersionDiff } from "./schemas/VersionDiff.js";
 // Services
 export { SemVerParser } from "./services/SemVerParser.js";
+export { VersionCache } from "./services/VersionCache.js";
+export { VersionFetcher } from "./services/VersionFetcher.js";
 // Algebra
 export { equivalent, intersect, isSubset, simplify, union } from "./utils/algebra.js";
 // Bump
