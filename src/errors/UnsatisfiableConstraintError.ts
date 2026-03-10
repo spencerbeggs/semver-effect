@@ -7,6 +7,7 @@ export class UnsatisfiableConstraintError extends UnsatisfiableConstraintErrorBa
 	readonly constraints: ReadonlyArray<unknown>;
 }> {
 	get message(): string {
-		return `No version satisfies all ${this.constraints.length} constraint(s)`;
+		const count = this.constraints.length;
+		return `No version satisfies all ${count} constraint${count === 1 ? "" : "s"}`;
 	}
 }

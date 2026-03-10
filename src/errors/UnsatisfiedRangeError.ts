@@ -8,6 +8,7 @@ export class UnsatisfiedRangeError extends UnsatisfiedRangeErrorBase<{
 	readonly available: ReadonlyArray<unknown>;
 }> {
 	get message(): string {
-		return `No version satisfies range ${String(this.range)} (${this.available.length} version(s) available)`;
+		const count = this.available.length;
+		return `No version satisfies range ${String(this.range)} (${count} version${count === 1 ? "" : "s"} available)`;
 	}
 }

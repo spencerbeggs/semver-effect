@@ -206,7 +206,7 @@ describe("UnsatisfiedRangeError", () => {
 			range,
 			available: ["1.0.0", "1.5.0"],
 		});
-		expect(err.message).toBe("No version satisfies range >=2.0.0 (2 version(s) available)");
+		expect(err.message).toBe("No version satisfies range >=2.0.0 (2 versions available)");
 	});
 
 	it("is an instance of Error", () => {
@@ -296,7 +296,7 @@ describe("UnsatisfiableConstraintError", () => {
 		const err = new UnsatisfiableConstraintError({
 			constraints: [">=1.0.0", "<2.0.0", "!=1.5.0"],
 		});
-		expect(err.message).toBe("No version satisfies all 3 constraint(s)");
+		expect(err.message).toBe("No version satisfies all 3 constraints");
 	});
 
 	it("is an instance of Error", () => {
