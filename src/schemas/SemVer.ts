@@ -29,7 +29,7 @@ export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 		for (const item of this.prerelease) {
 			h = Hash.combine(h)(Hash.hash(item));
 		}
-		return h;
+		return Hash.cached(this)(h);
 	}
 
 	toString(): string {
