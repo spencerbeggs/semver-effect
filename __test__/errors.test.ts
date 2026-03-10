@@ -10,6 +10,18 @@ import { UnsatisfiableConstraintError } from "../src/errors/UnsatisfiableConstra
 import { UnsatisfiedRangeError } from "../src/errors/UnsatisfiedRangeError.js";
 import { VersionFetchError } from "../src/errors/VersionFetchError.js";
 import { VersionNotFoundError } from "../src/errors/VersionNotFoundError.js";
+import { Comparator } from "../src/schemas/Comparator.js";
+import { Range } from "../src/schemas/Range.js";
+import { SemVer } from "../src/schemas/SemVer.js";
+
+const v = (major: number, minor: number, patch: number) =>
+	new SemVer({ major, minor, patch, prerelease: [], build: [] }, { disableValidation: true });
+
+const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer) =>
+	new Comparator({ operator, version }, { disableValidation: true });
+
+const r = (sets: ReadonlyArray<ReadonlyArray<Comparator>> = []) =>
+	new Range({ sets: [...sets.map((s) => [...s])] }, { disableValidation: true });
 
 describe("InvalidVersionError", () => {
 	it("has the correct _tag", () => {
@@ -182,8 +194,8 @@ describe("InvalidPrereleaseError", () => {
 });
 
 describe("UnsatisfiedRangeError", () => {
-	const range: unknown = ">=2.0.0";
-	const available: ReadonlyArray<unknown> = [];
+	const range = r([[c(">=", v(2, 0, 0))]]);
+	const available: ReadonlyArray<SemVer> = [];
 
 	it("has the correct _tag", () => {
 		const err = new UnsatisfiedRangeError({ range, available });
@@ -192,11 +204,11 @@ describe("UnsatisfiedRangeError", () => {
 
 	it("exposes the range field", () => {
 		const err = new UnsatisfiedRangeError({ range, available });
-		expect(err.range).toBe(">=2.0.0");
+		expect(err.range).toBe(range);
 	});
 
 	it("exposes the available field", () => {
-		const versions: ReadonlyArray<unknown> = ["1.0.0", "1.5.0"];
+		const versions: ReadonlyArray<SemVer> = [v(1, 0, 0), v(1, 5, 0)];
 		const err = new UnsatisfiedRangeError({ range, available: versions });
 		expect(err.available).toBe(versions);
 	});
@@ -204,7 +216,7 @@ describe("UnsatisfiedRangeError", () => {
 	it("derives message with version count", () => {
 		const err = new UnsatisfiedRangeError({
 			range,
-			available: ["1.0.0", "1.5.0"],
+			available: [v(1, 0, 0), v(1, 5, 0)],
 		});
 		expect(err.message).toBe("No version satisfies range >=2.0.0 (2 versions available)");
 	});
@@ -215,16 +227,17 @@ describe("UnsatisfiedRangeError", () => {
 	});
 
 	it("supports structural equality via Equal.equals", () => {
-		const a = new UnsatisfiedRangeError({ range: ">=2.0.0", available });
-		const b = new UnsatisfiedRangeError({ range: ">=2.0.0", available });
-		const c = new UnsatisfiedRangeError({ range: ">=3.0.0", available });
+		const a = new UnsatisfiedRangeError({ range, available });
+		const b = new UnsatisfiedRangeError({ range, available });
+		const otherRange = r([[c(">=", v(3, 0, 0))]]);
+		const d = new UnsatisfiedRangeError({ range: otherRange, available });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
 describe("VersionNotFoundError", () => {
-	const version: unknown = "1.2.3";
+	const version = v(1, 2, 3);
 
 	it("has the correct _tag", () => {
 		const err = new VersionNotFoundError({ version });
@@ -233,7 +246,7 @@ describe("VersionNotFoundError", () => {
 
 	it("exposes the version field", () => {
 		const err = new VersionNotFoundError({ version });
-		expect(err.version).toBe("1.2.3");
+		expect(err.version).toBe(version);
 	});
 
 	it("derives message", () => {
@@ -247,11 +260,11 @@ describe("VersionNotFoundError", () => {
 	});
 
 	it("supports structural equality via Equal.equals", () => {
-		const a = new VersionNotFoundError({ version: "1.2.3" });
-		const b = new VersionNotFoundError({ version: "1.2.3" });
-		const c = new VersionNotFoundError({ version: "2.0.0" });
+		const a = new VersionNotFoundError({ version: v(1, 2, 3) });
+		const b = new VersionNotFoundError({ version: v(1, 2, 3) });
+		const d = new VersionNotFoundError({ version: v(2, 0, 0) });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
@@ -279,7 +292,7 @@ describe("EmptyCacheError", () => {
 });
 
 describe("UnsatisfiableConstraintError", () => {
-	const constraints: ReadonlyArray<unknown> = [];
+	const constraints: ReadonlyArray<Range> = [];
 
 	it("has the correct _tag", () => {
 		const err = new UnsatisfiableConstraintError({ constraints });
@@ -287,14 +300,14 @@ describe("UnsatisfiableConstraintError", () => {
 	});
 
 	it("exposes the constraints field", () => {
-		const cs: ReadonlyArray<unknown> = [">=1.0.0", "<2.0.0"];
+		const cs: ReadonlyArray<Range> = [r([[c(">=", v(1, 0, 0))]]), r([[c("<", v(2, 0, 0))]])];
 		const err = new UnsatisfiableConstraintError({ constraints: cs });
 		expect(err.constraints).toBe(cs);
 	});
 
 	it("derives message with constraint count", () => {
 		const err = new UnsatisfiableConstraintError({
-			constraints: [">=1.0.0", "<2.0.0", "!=1.5.0"],
+			constraints: [r([[c(">=", v(1, 0, 0))]]), r([[c("<", v(2, 0, 0))]]), r([[c("=", v(1, 5, 0))]])],
 		});
 		expect(err.message).toBe("No version satisfies all 3 constraints");
 	});
@@ -305,17 +318,17 @@ describe("UnsatisfiableConstraintError", () => {
 	});
 
 	it("supports structural equality via Equal.equals", () => {
-		const sharedConstraints: ReadonlyArray<unknown> = [">=1.0.0"];
+		const sharedConstraints: ReadonlyArray<Range> = [r([[c(">=", v(1, 0, 0))]])];
 		const a = new UnsatisfiableConstraintError({ constraints: sharedConstraints });
 		const b = new UnsatisfiableConstraintError({ constraints: sharedConstraints });
-		const c = new UnsatisfiableConstraintError({ constraints: [">=2.0.0"] });
+		const d = new UnsatisfiableConstraintError({ constraints: [r([[c(">=", v(2, 0, 0))]])] });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
 describe("InvalidBumpError", () => {
-	const version: unknown = "1.2.3";
+	const version = v(1, 2, 3);
 
 	it("has the correct _tag", () => {
 		const err = new InvalidBumpError({ version, type: "major" });
@@ -324,7 +337,7 @@ describe("InvalidBumpError", () => {
 
 	it("exposes the version field", () => {
 		const err = new InvalidBumpError({ version, type: "major" });
-		expect(err.version).toBe("1.2.3");
+		expect(err.version).toBe(version);
 	});
 
 	it("exposes the type field", () => {
@@ -343,11 +356,11 @@ describe("InvalidBumpError", () => {
 	});
 
 	it("supports structural equality via Equal.equals", () => {
-		const a = new InvalidBumpError({ version: "1.2.3", type: "major" });
-		const b = new InvalidBumpError({ version: "1.2.3", type: "major" });
-		const c = new InvalidBumpError({ version: "1.2.3", type: "minor" });
+		const a = new InvalidBumpError({ version: v(1, 2, 3), type: "major" });
+		const b = new InvalidBumpError({ version: v(1, 2, 3), type: "major" });
+		const d = new InvalidBumpError({ version: v(1, 2, 3), type: "minor" });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 

@@ -21,3 +21,11 @@ export { UnsatisfiedRangeError } from "./errors/UnsatisfiedRangeError.js";
 // Errors -- Fetch
 export { VersionFetchError } from "./errors/VersionFetchError.js";
 export { VersionNotFoundError } from "./errors/VersionNotFoundError.js";
+// Order
+export { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
+export { Comparator } from "./schemas/Comparator.js";
+export type { ComparatorSet } from "./schemas/Range.js";
+export { Range } from "./schemas/Range.js";
+// Schemas
+export { SemVer } from "./schemas/SemVer.js";
+export { VersionDiff } from "./schemas/VersionDiff.js";
