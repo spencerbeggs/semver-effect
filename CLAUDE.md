@@ -7,20 +7,49 @@ code in this repository.
 
 **semver-effect** -- a strict SemVer 2.0.0 implementation built on Effect-TS.
 ESM-only, no loose mode, no coercion. Effect-native API with typed errors.
-
-Status: Design phase complete, implementation not yet started.
+650 tests passing, full SemVer 2.0.0 spec compliance.
 
 ## Design Documentation
 
-Design docs are in `.claude/design/semver-effect/`:
+**For system architecture and component structure:**
+@ `./.claude/design/semver-effect/architecture.md`
+Load when making architectural decisions or understanding component relationships.
 
-- `architecture.md` -- System overview, decisions, component structure
-- `data-model.md` -- Core types: SemVer, Comparator, Range, VersionDiff
-- `parser.md` -- Recursive descent parser, BNF grammar, desugaring
-- `error-model.md` -- TaggedError hierarchy with field specs
-- `operations.md` -- Comparison, range matching, range algebra, diffing
-- `version-cache.md` -- VersionCache service API and internals
-- `testing.md` -- Test strategy, coverage targets, Effect patterns
+**For core data types (SemVer, Comparator, Range, VersionDiff):**
+@ `./.claude/design/semver-effect/data-model.md`
+Load when modifying schemas, changing Data.TaggedClass patterns, or debugging equality/hashing.
+
+**For the recursive descent parser:**
+@ `./.claude/design/semver-effect/parser.md`
+Load when modifying parsing, BNF grammar, or desugaring logic.
+
+**For error types and hierarchy:**
+@ `./.claude/design/semver-effect/error-model.md`
+Load when adding or modifying TaggedError types.
+
+**For comparison, matching, algebra, and diff operations:**
+@ `./.claude/design/semver-effect/operations.md`
+Load when modifying comparison, range matching, range algebra, or diff utilities.
+
+**For the VersionCache service:**
+@ `./.claude/design/semver-effect/version-cache.md`
+Load when modifying the cache service API or layer implementation.
+
+**For test strategy and coverage:**
+@ `./.claude/design/semver-effect/testing.md`
+Load when writing or restructuring tests.
+
+**For SemVer 2.0.0 spec compliance details:**
+@ `./.claude/design/semver-effect/semver-compliance.md`
+Load when verifying spec compliance or handling edge cases.
+
+**For node-semver divergences and migration:**
+@ `./.claude/design/semver-effect/node-semver-divergences.md`
+Load when comparing behavior with node-semver or writing migration docs.
+
+**Research reference material** (pre-implementation analysis, historical context):
+@ `./.claude/design/semver-effect/research/`
+Load when investigating design rationale or reviewing prior analysis.
 
 ## Commands
 
@@ -46,11 +75,8 @@ pnpm run build:prod        # Build production/npm output only
 ### Running a Single Test
 
 ```bash
-# Run tests for a specific package
-pnpm run test -- --filter=@spencerbeggs/ecma-module
-
 # Run a specific test file
-pnpm vitest run pkgs/ecma-module/src/index.test.ts
+pnpm vitest run __test__/SemVer.test.ts
 ```
 
 ## Architecture
@@ -101,7 +127,7 @@ Turbo tasks define dependencies: `typecheck` depends on `build` completing first
 ```text
 src/
 ├── index.ts              (ONLY barrel export -- no other barrels)
-├── schemas/              (Schema.TaggedClass types)
+├── schemas/              (Data.TaggedClass types)
 ├── errors/               (one TaggedError per file, split base pattern)
 ├── services/             (interface + Context.GenericTag, no implementation)
 ├── layers/               (Layer implementations -- the "Live" variants)
@@ -114,7 +140,10 @@ __test__/                 (tests, adjacent to src/)
 
 - **Services**: `interface Foo` + `Context.GenericTag<Foo>("Foo")` (NOT
   `Context.Tag` class -- avoids un-nameable `_base` in declaration files)
-- **Errors**: Split base pattern for api-extractor compatibility:
+- **Schemas**: Split base pattern for api-extractor compatibility:
+  `export const FooBase = Data.TaggedClass("Foo")` (`@internal`) +
+  `export class Foo extends FooBase<{...}> {}`
+- **Errors**: Same split base pattern with `Data.TaggedError`:
   `export const FooBase = Data.TaggedError("Foo")` (`@internal`) +
   `export class Foo extends FooBase<{...}> {}`
 - **No barrel files** in subdirectories -- all imports go directly to source
@@ -135,3 +164,17 @@ All commits require:
 ### Publishing
 
 Packages publish to both GitHub Packages and npm with provenance.
+The `"private": true` in `package.json` is transformed by the build process
+(rslib-builder) based on `publishConfig.access` -- it is not manually toggled.
+
+## Tooling
+
+- **Biome**: Unified linting and formatting (`biome.jsonc` at root)
+- **Commitlint**: Conventional commits with DCO signoff (`@savvy-web/commitlint`)
+- **Husky**: Git hooks (`pre-commit`, `commit-msg`, `pre-push`)
+- **lint-staged**: Runs Biome, markdownlint, tsgo on staged files
+- **markdownlint**: Markdown linting (`lib/configs/.markdownlint-cli2.jsonc`)
+- **Turbo**: Build orchestration with caching
+- **Rslib**: Library bundler with dual dev/npm output and api-extractor
+- **Vitest**: Test framework with v8 coverage, forks pool
+- **tsgo**: Go-based TypeScript compiler (preferred over tsc)
