@@ -42,14 +42,14 @@ range algebra, and version cache services.
 semver-effect is a strict SemVer 2.0.0 implementation that replaces node-semver
 for Effect-native TypeScript applications. Every function returns an Effect,
 invalid input produces typed errors (never null), and all data types are
-immutable Schema.TaggedClass instances.
+immutable Data.TaggedClass instances.
 
 **Key Design Principles:**
 
 - Strict SemVer 2.0.0 grammar only -- no loose mode, no coercion, no v-prefix tolerance
 - Effect-native API: all parsing operations return Effect with typed error channels
 - Rich error model via TaggedError with positional parse info
-- Immutable data types via Schema.TaggedClass with Equal, Order, Hash, Inspectable
+- Immutable data types via Data.TaggedClass with Equal, Order, Hash, Inspectable
 - Service-based architecture: SemVerParser and VersionCache as Effect services
 - Pure utility functions for comparison, matching, bumping, and diffing
 
@@ -192,7 +192,7 @@ coverage.
        |            parseRange.ts
        |            prettyPrint.ts
        |
-  Schema.TaggedClass
+  Data.TaggedClass (split base pattern)
   Equal + Order + Hash + Inspectable
 ```
 
@@ -234,24 +234,36 @@ coverage.
    - Cons: Poor error messages, hard to maintain complex range grammar
    - Why rejected: Error quality is a core goal
 
-#### Decision 3: Schema.TaggedClass for Data Types
+#### Decision 3: Data.TaggedClass for Data Types
 
-**Context:** Need immutable, serializable version data types.
+**Context:** Need immutable, tagged version data types with structural equality.
 
 **Options considered:**
 
-1. **Schema.TaggedClass (Chosen):**
-   - Pros: Built-in serialization, pattern matching via _tag
-   - Cons: Effect dependency for data types
-   - Why chosen: Integrates naturally with Effect ecosystem
+1. **Schema.TaggedClass (Originally chosen, later replaced):**
+   - Pros: Built-in Schema serialization, pattern matching via _tag
+   - Cons: Forward self-reference `<SemVer>` in `Schema.TaggedClass<SemVer>()`
+     generates un-nameable `_base` types that break declaration bundling
+     (api-extractor). Cannot extract the base to a named export with tsgo.
+   - Why replaced: Schema encode/decode was never used by consumers;
+     the un-nameable types caused "forgotten export" errors in ci:build.
 
-2. **Plain interfaces + custom Equal:**
+2. **Data.TaggedClass (Chosen):**
+   - Pros: Pattern matching via _tag, structural equality, no forward
+     reference needed, extracted base follows same pattern as Data.TaggedError
+     and Context.GenericTag
+   - Cons: No built-in Schema encode/decode (not needed)
+   - Why chosen: Solves the declaration bundling problem while preserving
+     all needed traits. The `*Base` export gives api-extractor a stable
+     reference. ci:build passes cleanly with zero forgotten exports.
+
+3. **Plain interfaces + custom Equal:**
    - Pros: Lighter weight
-   - Cons: Manual Equal/Hash/serialization
-   - Why rejected: Schema.TaggedClass provides needed traits
+   - Cons: Manual Equal/Hash, no _tag discrimination
+   - Why rejected: Data.TaggedClass provides needed traits with minimal overhead
 
 **Implementation note:** Custom Equal and Hash overrides are mandatory on
-SemVer because the default Data.Class equality does shallow reference
+SemVer because the default Data.TaggedClass equality does shallow reference
 comparison on arrays, and build metadata must be excluded from both
 equality and hashing per the SemVer spec.
 
@@ -265,14 +277,17 @@ equality and hashing per the SemVer spec.
   `layers/`. GenericTag avoids un-nameable `_base` types that break
   api-extractor declaration bundling when re-exported via `export *`.
 
-#### Pattern 2: Split Base for TaggedError
+#### Pattern 2: Split Base for TaggedError and TaggedClass
 
-- **Where used:** All 10 error types in `errors/` (one file per error)
-- **Why used:** Typed error channels, pattern matching, rich context
-- **Implementation:** Each error file exports a named `*Base` constant
-  (`Data.TaggedError(...)`) and a class extending it. The split base gives
-  api-extractor a stable reference instead of an un-nameable inline call.
-  The `*Base` export is marked `@internal`.
+- **Where used:** All 10 error types in `errors/` (one file per error),
+  all 4 schema classes in `schemas/` (SemVer, Comparator, Range, VersionDiff)
+- **Why used:** Typed error channels, pattern matching, rich context,
+  declaration bundling compatibility
+- **Implementation:** Each file exports a named `*Base` constant
+  (`Data.TaggedError(...)` for errors, `Data.TaggedClass(...)` for schemas)
+  and a class extending it. The split base gives api-extractor a stable
+  reference instead of an un-nameable inline call. The `*Base` export is
+  marked `@internal`.
 
 #### Pattern 3: No Barrel Files (Single Index)
 
@@ -289,13 +304,16 @@ equality and hashing per the SemVer spec.
 - **Implementation:** Uses `Function.dual(2, ...)` for all binary operations.
   Enables both `satisfies(version, range)` and `pipe(version, satisfies(range))`.
 
-#### Pattern 5: disableValidation for Trusted Internals
+#### Pattern 5: Direct Construction (No Runtime Validation)
 
 - **Where used:** Parser output, bump operations, desugar, normalize
-- **Why used:** Avoids double validation on hot paths
-- **Implementation:** `new SemVer({...}, { disableValidation: true })` when
-  constructing from already-validated data inside the parser and internal
-  utility functions.
+- **Why it works:** Data.TaggedClass constructors take a single object
+  argument with no runtime schema validation. Field types are plain
+  TypeScript (`number`, `ReadonlyArray<string | number>`, etc.). The parser
+  validates input before construction; bump operations produce values that
+  are correct by construction. This replaced the previous
+  `{ disableValidation: true }` second argument that was specific to
+  Schema.TaggedClass.
 
 ---
 
@@ -369,7 +387,7 @@ __test__/                     (adjacent to src/, not inside it)
 - **No barrel files** except `src/index.ts` -- all imports go directly to
   source files
 - **One concern per file** -- each schema, error, service gets its own file
-- **`schemas/`** -- Schema.TaggedClass types (data model)
+- **`schemas/`** -- Data.TaggedClass types (data model, split base pattern)
 - **`errors/`** -- TaggedError subclasses (one per file, split base pattern)
 - **`services/`** -- Service interfaces + GenericTag (no implementation)
 - **`layers/`** -- Layer implementations (the "Live" variants)
@@ -449,7 +467,7 @@ during parsing, before any matching occurs.
 
 ### Effect Ecosystem Integration
 
-- **Effect.Schema:** Data types use Schema.TaggedClass for serialization
+- **Effect.Data:** Data types use Data.TaggedClass for tagged immutability
 - **Effect.Order:** SemVer exposes Order instance for Array.sort, SortedSet
 - **Effect.Equal/Hash:** SemVer implements custom Equal (ignoring build metadata
   per spec) and Hash (excluding build from hash computation)

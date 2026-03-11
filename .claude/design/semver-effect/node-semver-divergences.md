@@ -78,7 +78,7 @@ node-semver (strict-mode entries only).
 | Bump operations | Compatible | Same version outputs for valid inputs |
 | Error handling | Different | Typed errors vs null/throw |
 | API shape | Different | Effect-native vs imperative |
-| Data model | Different | Immutable Schema.TaggedClass vs mutable class |
+| Data model | Different | Immutable Data.TaggedClass vs mutable class |
 | Coercion | Not supported | No equivalent |
 | v-prefix tolerance | Not supported | Always rejected |
 
@@ -323,7 +323,7 @@ information in its error messages. This is documented in node-semver issues
 node-semver's `SemVer` class is mutable. `inc()` mutates the instance in
 place. Users must clone before bumping (node-semver issue #378).
 
-semver-effect's `SemVer` is an immutable `Schema.TaggedClass`. All bump
+semver-effect's `SemVer` is an immutable `Data.TaggedClass`. All bump
 operations return new instances.
 
 ### Structural Equality vs instanceof
@@ -489,7 +489,7 @@ Features in semver-effect with no node-semver equivalent:
 | `compareWithBuild(a, b)` | Build-aware comparison |
 | Effect service pattern | DI, testability, composability |
 | Dual calling convention | Data-first and data-last on all binary ops |
-| Immutable data types | Schema.TaggedClass with Equal/Hash/Inspectable |
+| Immutable data types | Data.TaggedClass with Equal/Hash/Inspectable |
 
 ---
 

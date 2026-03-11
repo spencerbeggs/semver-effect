@@ -185,7 +185,7 @@ __test__/
   parseRange.test.ts         -- range parsing and desugaring
   parseVersion.test.ts       -- version parsing and rejection
   prettyPrint.test.ts        -- Match.exhaustive printer
-  schemas.test.ts            -- Schema.TaggedClass construction + traits
+  schemas.test.ts            -- Data.TaggedClass construction + traits
   SemVer.test.ts             -- SemVer data type (Equal, Hash, toString, toJSON)
   SemVerParser.test.ts       -- parser service via Layer composition
   spec-compliance.test.ts    -- data-driven spec compliance via fixtures
@@ -197,7 +197,7 @@ __test__/
 Each test file maps to a specific source module or concern:
 
 - **Schema tests** (`schemas.test.ts`, `SemVer.test.ts`): Construction,
-  `disableValidation`, traits (Equal, Hash, Inspectable), toString/toJSON
+  construction, traits (Equal, Hash, Inspectable), toString/toJSON
 - **Parser tests** (`parseVersion.test.ts`, `parseRange.test.ts`,
   `SemVerParser.test.ts`): Grammar correctness, error positions, desugaring
 - **Operation tests** (`compare.test.ts`, `matching.test.ts`, `algebra.test.ts`,
@@ -308,7 +308,7 @@ Covered by `schemas.test.ts` and `SemVer.test.ts`:
 - `toString()` includes all components (prerelease + build)
 - `toJSON()` produces structured representation
 - `nodejs.util.inspect.custom` is implemented
-- `disableValidation` skips schema checks for trusted construction
+- Direct construction with plain field values (no runtime schema validation)
 
 ### 7. Cross-Module Edge Cases
 
@@ -425,10 +425,11 @@ it.each(invalidVersions)("rejects %s", (input) => {
 })
 ```
 
-### Direct Construction with disableValidation
+### Direct Construction
 
 Tests that need specific SemVer instances without parsing use direct
-construction:
+construction. Since Data.TaggedClass has no runtime schema validation,
+there is no second `{ disableValidation: true }` argument:
 
 ```typescript
 const v = (major: number, minor: number, patch: number,
@@ -436,8 +437,7 @@ const v = (major: number, minor: number, patch: number,
            build: ReadonlyArray<string> = []) =>
   new SemVer({ major, minor, patch,
                prerelease: [...prerelease],
-               build: [...build] },
-             { disableValidation: true })
+               build: [...build] })
 ```
 
 ### Testing Order and Equal Instances

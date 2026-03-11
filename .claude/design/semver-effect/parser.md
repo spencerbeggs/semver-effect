@@ -238,11 +238,13 @@ The parser uses bounded lookahead (3 characters: space, dash, space) to
 detect hyphen ranges. If the pattern doesn't match, it falls back to
 space-separated simples.
 
-### disableValidation
+### Direct Construction
 
-All SemVer/Comparator/Range instances constructed by the parser use
-`{ disableValidation: true }` since values are already validated by the
-grammar.
+All SemVer/Comparator/Range instances are constructed directly by the parser
+with plain field values. Since these types use Data.TaggedClass (not
+Schema.TaggedClass), there is no runtime schema validation at construction
+time. The parser's grammar rules ensure all values are valid before
+construction.
 
 ---
 

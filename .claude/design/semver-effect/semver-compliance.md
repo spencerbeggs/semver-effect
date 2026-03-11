@@ -76,7 +76,7 @@ spec-derived vectors. Additional compliance coverage exists across
 | Spec Section | Topic | Compliance | Implementation |
 | :--- | :--- | :--- | :--- |
 | 2 | Version format X.Y.Z | Full | `parseValidSemVer` in grammar.ts |
-| 3 | Immutability of released versions | Full | Schema.TaggedClass (frozen) |
+| 3 | Immutability of released versions | Full | Data.TaggedClass (frozen) |
 | 4 | Major version zero semantics | N/A | Semantic rule, not enforced by parser |
 | 5 | Initial public API (1.0.0) | N/A | Semantic rule, not enforced by parser |
 | 6 | Patch increment rules | N/A | Semantic rule; `bumpPatch` is available |
@@ -259,7 +259,7 @@ rules about when each should be used. The caller is responsible for choosing
 the correct bump type.
 
 Section 3 states that released versions are immutable. Our `SemVer` type
-enforces this at the language level via `Schema.TaggedClass` (frozen
+enforces this at the language level via `Data.TaggedClass` (frozen
 instances, `ReadonlyArray` for prerelease and build).
 
 ---

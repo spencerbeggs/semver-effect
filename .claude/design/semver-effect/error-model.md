@@ -92,7 +92,7 @@ All errors extend `Data.TaggedError` for:
 1. **Typed error channel:** Participates in `Effect<A, E, R>` type tracking.
 2. **Pattern matching via `_tag`:** Enables `Effect.catchTag("InvalidVersionError", ...)`.
 3. **Structural equality:** Simplifies testing.
-4. **Consistency:** Matches the data model convention (Schema.TaggedClass).
+4. **Consistency:** Matches the data model convention (Data.TaggedClass).
 
 ### Why Structured Fields Instead of Message Strings
 

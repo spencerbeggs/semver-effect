@@ -284,9 +284,9 @@ bumpPrerelease(v: SemVer, id?: string): SemVer
 bumpRelease(v: SemVer): SemVer
 ```
 
-All are pure functions returning new SemVer instances. They use
-`{ disableValidation: true }` internally since bumped values are guaranteed
-valid by construction.
+All are pure functions returning new SemVer instances. Since Data.TaggedClass
+constructors have no runtime schema validation, bumped values are constructed
+directly from computed fields that are correct by construction.
 
 ### Bump Rules
 
