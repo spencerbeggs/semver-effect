@@ -248,16 +248,13 @@ export const parseValidSemVer = (raw: string): Effect.Effect<SemVer, InvalidVers
 			return yield* Effect.fail(fail(s));
 		}
 
-		return new SemVer(
-			{
-				major,
-				minor,
-				patch,
-				prerelease,
-				build,
-			},
-			{ disableValidation: true },
-		);
+		return new SemVer({
+			major,
+			minor,
+			patch,
+			prerelease,
+			build,
+		});
 	});
 
 // ---------------------------------------------------------------------------
@@ -576,12 +573,9 @@ export const parseRangeSet = (raw: string): Effect.Effect<Range, InvalidRangeErr
 
 		if (trimmed.length === 0) {
 			// Empty string = match all
-			return new Range(
-				{
-					sets: [desugarXRange(null, { major: null, minor: null, patch: null, prerelease: [], build: [] })],
-				},
-				{ disableValidation: true },
-			);
+			return new Range({
+				sets: [desugarXRange(null, { major: null, minor: null, patch: null, prerelease: [], build: [] })],
+			});
 		}
 
 		const s: ParserState = { input: trimmed, pos: 0, len: trimmed.length };
@@ -604,7 +598,7 @@ export const parseRangeSet = (raw: string): Effect.Effect<Range, InvalidRangeErr
 			return yield* Effect.fail(failRange(s));
 		}
 
-		return new Range({ sets }, { disableValidation: true });
+		return new Range({ sets });
 	});
 
 /**
@@ -694,10 +688,7 @@ export const parseSingleComparator = (raw: string): Effect.Effect<Comparator, In
 			return yield* Effect.fail(new InvalidComparatorError({ input: trimmed, position: s.pos }));
 		}
 
-		const version = new SemVer({ major, minor, patch, prerelease, build }, { disableValidation: true });
+		const version = new SemVer({ major, minor, patch, prerelease, build });
 
-		return new Comparator(
-			{ operator: (operator ?? "=") as "=" | ">" | ">=" | "<" | "<=", version },
-			{ disableValidation: true },
-		);
+		return new Comparator({ operator: (operator ?? "=") as "=" | ">" | ">=" | "<" | "<=", version });
 	});

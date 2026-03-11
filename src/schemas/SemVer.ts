@@ -1,11 +1,10 @@
-import { Equal, Hash, Schema } from "effect";
+import { Data, Equal, Hash } from "effect";
 
-const NonNegativeInt = Schema.Int.pipe(Schema.filter((n) => n >= 0));
-
-const PrereleaseItem = Schema.Union(Schema.String, NonNegativeInt);
+/** @internal */
+export const SemVerBase = Data.TaggedClass("SemVer");
 
 /**
- * A parsed SemVer 2.0.0 version, represented as an Effect `Schema.TaggedClass`.
+ * A parsed SemVer 2.0.0 version, represented as an Effect `Data.TaggedClass`.
  *
  * Implements structural equality via {@link Equal.Equal} (build metadata is
  * excluded from equality checks per the SemVer spec) and is hashable via
@@ -36,15 +35,14 @@ const PrereleaseItem = Schema.Union(Schema.String, NonNegativeInt);
  * ```
  *
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
- * @see {@link https://effect.website/docs/schema/classes | Effect Schema.TaggedClass}
  */
-export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
-	major: NonNegativeInt,
-	minor: NonNegativeInt,
-	patch: NonNegativeInt,
-	prerelease: Schema.Array(PrereleaseItem),
-	build: Schema.Array(Schema.String),
-}) {
+export class SemVer extends SemVerBase<{
+	readonly major: number;
+	readonly minor: number;
+	readonly patch: number;
+	readonly prerelease: ReadonlyArray<string | number>;
+	readonly build: ReadonlyArray<string>;
+}> {
 	[Equal.symbol](that: Equal.Equal): boolean {
 		if (!(that instanceof SemVer)) return false;
 		return (

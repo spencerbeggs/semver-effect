@@ -25,7 +25,7 @@ const v = (
 	patch: number,
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
-) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] }, { disableValidation: true });
+) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] });
 
 describe("compare", () => {
 	it("returns -1 when a < b", () => {

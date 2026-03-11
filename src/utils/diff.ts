@@ -42,15 +42,12 @@ export const diff: {
 } = Fn.dual(
 	2,
 	(a: SemVer, b: SemVer): VersionDiff =>
-		new VersionDiff(
-			{
-				type: classifyDiff(a, b),
-				from: a,
-				to: b,
-				major: b.major - a.major,
-				minor: b.minor - a.minor,
-				patch: b.patch - a.patch,
-			},
-			{ disableValidation: true },
-		),
+		new VersionDiff({
+			type: classifyDiff(a, b),
+			from: a,
+			to: b,
+			major: b.major - a.major,
+			minor: b.minor - a.minor,
+			patch: b.patch - a.patch,
+		}),
 );

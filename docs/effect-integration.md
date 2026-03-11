@@ -105,10 +105,7 @@ const TestParserLive = Layer.succeed(
   SemVerParser.of({
     parseVersion: (_input) =>
       Effect.succeed(
-        new SemVerClass(
-          { major: 1, minor: 0, patch: 0, prerelease: [], build: [] },
-          { disableValidation: true },
-        ),
+        new SemVerClass({ major: 1, minor: 0, patch: 0, prerelease: [], build: [] }),
       ),
     parseRange: (_input) => Effect.fail(/* ... */),
     parseComparator: (_input) => Effect.fail(/* ... */),

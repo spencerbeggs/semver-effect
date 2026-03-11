@@ -14,7 +14,7 @@ const v = (
 	patch: number,
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
-) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] }, { disableValidation: true });
+) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] });
 
 describe("union", () => {
 	it("union of two disjoint ranges contains both sets", () => {

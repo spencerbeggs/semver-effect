@@ -11,7 +11,7 @@ const v = (
 	patch: number,
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
-) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] }, { disableValidation: true });
+) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] });
 
 describe("prettyPrint", () => {
 	it("formats SemVer", () => {
@@ -22,56 +22,50 @@ describe("prettyPrint", () => {
 	});
 
 	it("formats Comparator", () => {
-		const c = new Comparator({ operator: ">=", version: v(1, 2, 3) }, { disableValidation: true });
+		const c = new Comparator({ operator: ">=", version: v(1, 2, 3) });
 		expect(prettyPrint(c)).toBe(">=1.2.3");
 	});
 
 	it("formats Comparator with = operator (suppressed)", () => {
-		const c = new Comparator({ operator: "=", version: v(1, 0, 0) }, { disableValidation: true });
+		const c = new Comparator({ operator: "=", version: v(1, 0, 0) });
 		expect(prettyPrint(c)).toBe("1.0.0");
 	});
 
 	it("formats Range", () => {
-		const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) }, { disableValidation: true });
-		const c2 = new Comparator({ operator: "<", version: v(2, 0, 0) }, { disableValidation: true });
-		const range = new Range({ sets: [[c1, c2]] }, { disableValidation: true });
+		const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) });
+		const c2 = new Comparator({ operator: "<", version: v(2, 0, 0) });
+		const range = new Range({ sets: [[c1, c2]] });
 		expect(prettyPrint(range)).toBe(">=1.0.0 <2.0.0");
 	});
 
 	it("formats Range with multiple sets", () => {
-		const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) }, { disableValidation: true });
-		const c2 = new Comparator({ operator: ">=", version: v(3, 0, 0) }, { disableValidation: true });
-		const range = new Range({ sets: [[c1], [c2]] }, { disableValidation: true });
+		const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) });
+		const c2 = new Comparator({ operator: ">=", version: v(3, 0, 0) });
+		const range = new Range({ sets: [[c1], [c2]] });
 		expect(prettyPrint(range)).toBe(">=1.0.0 || >=3.0.0");
 	});
 
 	it("formats VersionDiff", () => {
-		const d = new VersionDiff(
-			{
-				type: "minor",
-				from: v(1, 2, 0),
-				to: v(1, 3, 0),
-				major: 0,
-				minor: 1,
-				patch: 0,
-			},
-			{ disableValidation: true },
-		);
+		const d = new VersionDiff({
+			type: "minor",
+			from: v(1, 2, 0),
+			to: v(1, 3, 0),
+			major: 0,
+			minor: 1,
+			patch: 0,
+		});
 		expect(prettyPrint(d)).toBe("minor (1.2.0 → 1.3.0)");
 	});
 
 	it("formats VersionDiff type none", () => {
-		const d = new VersionDiff(
-			{
-				type: "none",
-				from: v(1, 0, 0),
-				to: v(1, 0, 0),
-				major: 0,
-				minor: 0,
-				patch: 0,
-			},
-			{ disableValidation: true },
-		);
+		const d = new VersionDiff({
+			type: "none",
+			from: v(1, 0, 0),
+			to: v(1, 0, 0),
+			major: 0,
+			minor: 0,
+			patch: 0,
+		});
 		expect(prettyPrint(d)).toBe("none (1.0.0 → 1.0.0)");
 	});
 });

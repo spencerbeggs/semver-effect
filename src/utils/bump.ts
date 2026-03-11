@@ -1,7 +1,7 @@
 import { SemVer } from "../schemas/SemVer.js";
 
 const sv = (major: number, minor: number, patch: number, prerelease: ReadonlyArray<string | number> = []): SemVer =>
-	new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [] }, { disableValidation: true });
+	new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [] });
 
 /**
  * Increment the major version and reset minor, patch, and prerelease to zero/empty.

@@ -5,7 +5,7 @@ import { Range } from "../schemas/Range.js";
 import { SemVerOrder } from "./order.js";
 
 const makeRange = (sets: ReadonlyArray<ReadonlyArray<Comparator>>): Range =>
-	new Range({ sets: sets.map((s) => [...s]) }, { disableValidation: true });
+	new Range({ sets: sets.map((s) => [...s]) });
 
 const isSetSatisfiable = (set: ReadonlyArray<Comparator>): boolean => {
 	const lowers: Array<Comparator> = [];

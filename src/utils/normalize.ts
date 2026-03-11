@@ -40,4 +40,4 @@ const normalizeComparatorSet = (set: ReadonlyArray<Comparator>): ReadonlyArray<C
 	sortComparators(removeDuplicates(set));
 
 export const normalizeRange = (range: Range): Range =>
-	new Range({ sets: range.sets.map((set) => [...normalizeComparatorSet(set)]) }, { disableValidation: true });
+	new Range({ sets: range.sets.map((set) => [...normalizeComparatorSet(set)]) });

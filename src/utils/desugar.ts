@@ -16,19 +16,16 @@ const sv = (
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
 ): SemVer =>
-	new SemVer(
-		{
-			major,
-			minor,
-			patch,
-			prerelease: prerelease.slice(),
-			build: build.slice(),
-		},
-		{ disableValidation: true },
-	);
+	new SemVer({
+		major,
+		minor,
+		patch,
+		prerelease: prerelease.slice(),
+		build: build.slice(),
+	});
 
 const comp = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer): Comparator =>
-	new Comparator({ operator, version }, { disableValidation: true });
+	new Comparator({ operator, version });
 
 export const desugarTilde = (p: Partial): ReadonlyArray<Comparator> => {
 	const major = p.major ?? 0;

@@ -18,8 +18,8 @@ applications.
 | --- | --- | --- |
 | Error handling | Returns `null` on failure | Returns typed `Effect` error |
 | Parsing mode | Loose mode, coercion, `v` prefix | Strict SemVer 2.0.0 only |
-| Return types | Strings and `SemVer` objects | `Schema.TaggedClass` instances |
-| Immutability | Mutable `SemVer` objects | Frozen `Schema.TaggedClass` instances |
+| Return types | Strings and `SemVer` objects | `Data.TaggedClass` instances |
+| Immutability | Mutable `SemVer` objects | Frozen `Data.TaggedClass` instances |
 | Effect integration | None | Native services, layers, typed errors |
 | Range algebra | Not available | `intersect`, `union`, `isSubset`, `equivalent`, `simplify` |
 | Version cache | Not available | `VersionCache` service with resolution, grouping, navigation |

@@ -23,7 +23,7 @@ category.
 
 ### SemVer
 
-The core version type. An immutable `Schema.TaggedClass` with `Equal`, `Hash`,
+The core version type. An immutable `Data.TaggedClass` with `Equal`, `Hash`,
 and custom `toString`.
 
 ```typescript

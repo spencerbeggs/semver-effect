@@ -137,20 +137,14 @@ export const truncate: {
 	2,
 	(v: SemVer, level: "prerelease" | "build"): SemVer =>
 		level === "prerelease"
-			? new SemVer(
-					{ major: v.major, minor: v.minor, patch: v.patch, prerelease: [], build: [] },
-					{ disableValidation: true },
-				)
-			: new SemVer(
-					{
-						major: v.major,
-						minor: v.minor,
-						patch: v.patch,
-						prerelease: [...v.prerelease],
-						build: [],
-					},
-					{ disableValidation: true },
-				),
+			? new SemVer({ major: v.major, minor: v.minor, patch: v.patch, prerelease: [], build: [] })
+			: new SemVer({
+					major: v.major,
+					minor: v.minor,
+					patch: v.patch,
+					prerelease: [...v.prerelease],
+					build: [],
+				}),
 );
 
 /**

@@ -78,11 +78,27 @@ export {
 export { SemVerParserLive } from "./layers/SemVerParserLive.js";
 export { VersionCacheLive } from "./layers/VersionCacheLive.js";
 // Schemas
-export { Comparator } from "./schemas/Comparator.js";
+export {
+	Comparator,
+	/** @internal */
+	ComparatorBase,
+} from "./schemas/Comparator.js";
 export type { ComparatorSet } from "./schemas/Range.js";
-export { Range } from "./schemas/Range.js";
-export { SemVer } from "./schemas/SemVer.js";
-export { VersionDiff } from "./schemas/VersionDiff.js";
+export {
+	Range,
+	/** @internal */
+	RangeBase,
+} from "./schemas/Range.js";
+export {
+	SemVer,
+	/** @internal */
+	SemVerBase,
+} from "./schemas/SemVer.js";
+export {
+	VersionDiff,
+	/** @internal */
+	VersionDiffBase,
+} from "./schemas/VersionDiff.js";
 // Services
 export { SemVerParser } from "./services/SemVerParser.js";
 export { VersionCache } from "./services/VersionCache.js";

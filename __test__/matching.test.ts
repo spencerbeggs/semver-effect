@@ -11,7 +11,7 @@ const v = (
 	patch: number,
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
-) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] }, { disableValidation: true });
+) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] });
 
 const r = (input: string) => Effect.runSync(Effect.map(parseRangeSet(input), normalizeRange));
 

@@ -318,18 +318,15 @@ describe("SemVer", () => {
 		});
 	});
 
-	describe("disableValidation", () => {
-		it("can construct with { disableValidation: true } for trusted input", () => {
-			const v = new SemVer(
-				{
-					major: 1,
-					minor: 0,
-					patch: 0,
-					prerelease: [],
-					build: [],
-				},
-				{ disableValidation: true },
-			);
+	describe("direct construction", () => {
+		it("can construct directly for trusted input", () => {
+			const v = new SemVer({
+				major: 1,
+				minor: 0,
+				patch: 0,
+				prerelease: [],
+				build: [],
+			});
 			expect(v.major).toBe(1);
 			expect(v.minor).toBe(0);
 			expect(v.patch).toBe(0);

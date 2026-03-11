@@ -1,5 +1,8 @@
-import { Schema } from "effect";
-import { SemVer } from "./SemVer.js";
+import { Data } from "effect";
+import type { SemVer } from "./SemVer.js";
+
+/** @internal */
+export const ComparatorBase = Data.TaggedClass("Comparator");
 
 /**
  * A single version constraint consisting of a comparison operator and a version.
@@ -31,10 +34,10 @@ import { SemVer } from "./SemVer.js";
  * @see {@link Range}
  * @see {@link SemVer}
  */
-export class Comparator extends Schema.TaggedClass<Comparator>()("Comparator", {
-	operator: Schema.Literal("=", ">", ">=", "<", "<="),
-	version: SemVer,
-}) {
+export class Comparator extends ComparatorBase<{
+	readonly operator: "=" | ">" | ">=" | "<" | "<=";
+	readonly version: SemVer;
+}> {
 	toString(): string {
 		const op = this.operator === "=" ? "" : this.operator;
 		return `${op}${this.version.toString()}`;

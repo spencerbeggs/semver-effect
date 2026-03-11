@@ -15,13 +15,11 @@ import { Range } from "../src/schemas/Range.js";
 import { SemVer } from "../src/schemas/SemVer.js";
 
 const v = (major: number, minor: number, patch: number) =>
-	new SemVer({ major, minor, patch, prerelease: [], build: [] }, { disableValidation: true });
+	new SemVer({ major, minor, patch, prerelease: [], build: [] });
 
-const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer) =>
-	new Comparator({ operator, version }, { disableValidation: true });
+const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer) => new Comparator({ operator, version });
 
-const r = (sets: ReadonlyArray<ReadonlyArray<Comparator>> = []) =>
-	new Range({ sets: [...sets.map((s) => [...s])] }, { disableValidation: true });
+const r = (sets: ReadonlyArray<ReadonlyArray<Comparator>> = []) => new Range({ sets: [...sets.map((s) => [...s])] });
 
 describe("InvalidVersionError", () => {
 	it("has the correct _tag", () => {

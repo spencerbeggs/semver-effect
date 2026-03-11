@@ -18,22 +18,17 @@ const v = (
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
 ) =>
-	new SemVer(
-		{
-			major,
-			minor,
-			patch,
-			prerelease: [...prerelease],
-			build: [...build],
-		},
-		{ disableValidation: true },
-	);
+	new SemVer({
+		major,
+		minor,
+		patch,
+		prerelease: [...prerelease],
+		build: [...build],
+	});
 
-const comp = (op: "=" | ">" | ">=" | "<" | "<=", ver: SemVer) =>
-	new Comparator({ operator: op, version: ver }, { disableValidation: true });
+const comp = (op: "=" | ">" | ">=" | "<" | "<=", ver: SemVer) => new Comparator({ operator: op, version: ver });
 
-const range = (...sets: ReadonlyArray<ReadonlyArray<Comparator>>) =>
-	new Range({ sets: sets.map((s) => [...s]) }, { disableValidation: true });
+const range = (...sets: ReadonlyArray<ReadonlyArray<Comparator>>) => new Range({ sets: sets.map((s) => [...s]) });
 
 const r = (input: string) => Effect.runSync(Effect.map(parseRangeSet(input), normalizeRange));
 

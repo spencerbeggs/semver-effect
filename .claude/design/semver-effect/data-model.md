@@ -17,7 +17,7 @@ dependencies: []
 
 Defines the immutable data types that form the foundation of semver-effect:
 SemVer, Comparator, ComparatorSet, Range, and VersionDiff. All types are
-Schema.TaggedClass instances with Effect trait implementations.
+Data.TaggedClass instances with Effect trait implementations.
 
 ## Table of Contents
 
@@ -39,10 +39,10 @@ Schema.TaggedClass instances with Effect trait implementations.
 ## Overview
 
 The core data model provides the immutable, typed representations of SemVer
-2.0.0 concepts. Every type is a Schema.TaggedClass, giving it automatic
-`_tag` discrimination, JSON serialization, and structural equality. The
-data model is the lowest layer of the package -- the parser produces these
-types, the VersionCache stores them, and all operations consume them.
+2.0.0 concepts. Every type is a Data.TaggedClass, giving it automatic
+`_tag` discrimination and structural equality. The data model is the lowest
+layer of the package -- the parser produces these types, the VersionCache
+stores them, and all operations consume them.
 
 **Design constraints:**
 
@@ -72,40 +72,49 @@ and serialization formats match the design spec.
 
 ### What Is Implemented
 
-- All Schema.TaggedClass definitions (SemVer, Comparator, Range, VersionDiff)
+- All Data.TaggedClass definitions (SemVer, Comparator, Range, VersionDiff)
 - Custom Equal and Hash overrides on SemVer (excluding build metadata)
 - Inspectable trait: toString, toJSON, nodejs.util.inspect.custom on SemVer
 - toString and nodejs.util.inspect.custom on Comparator, Range, VersionDiff
 - toJSON on VersionDiff
 - SemVerOrder and SemVerOrderWithBuild as Order instances
 - ComparatorSet type alias
-- JSON serialization via Schema
+- JSON serialization via toJSON methods
 
 ---
 
 ## Rationale
 
-### Why Schema.TaggedClass
+### Why Data.TaggedClass (Migration from Schema.TaggedClass)
 
-Schema.TaggedClass provides several features that align with the goals of
-this package:
+Data.TaggedClass provides the features needed by the data model:
 
 1. **Discriminated unions via `_tag`:** Every instance carries a `_tag`
    string literal, enabling `Effect.Match` and `switch` discrimination
    across types (SemVer vs Comparator vs Range).
 
-2. **Built-in Schema:** Each class is its own Schema, so encoding/decoding
-   to JSON or other formats requires zero additional code.
-
-3. **Structural equality by default:** Schema.TaggedClass instances compare
+2. **Structural equality by default:** Data.TaggedClass instances compare
    by value, not by reference. This is critical for SemVer where
    `1.0.0+build1` must equal `1.0.0+build2`.
 
-4. **Immutability:** Instances are frozen. Bump operations return new
+3. **Immutability:** Instances are frozen. Bump operations return new
    instances rather than mutating.
 
-5. **Hash derivation:** Hash is derived from Equal, so SemVer instances
+4. **Hash derivation:** Hash is derived from Equal, so SemVer instances
    work correctly in HashSet and HashMap without custom hash functions.
+
+**Why the migration from Schema.TaggedClass:** The original implementation
+used `Schema.TaggedClass<SemVer>()("SemVer", { ... })` which provides
+built-in Schema encode/decode. However, the forward self-reference
+`<SemVer>` in the generic parameter generates un-nameable `_base` types
+that break declaration bundling (api-extractor). The `_base` type cannot be
+extracted to a named export, causing "forgotten export" errors in the
+`.d.ts` rollup. `Data.TaggedClass("SemVer")` follows the same extracted
+base pattern already used for errors (`Data.TaggedError`) and services
+(`Context.GenericTag`) -- no forward reference is needed, so the base can
+be exported as a named constant. The Schema encode/decode capability was
+never used by consumers, so removing it has no API impact. The `ci:build`
+pipeline now passes cleanly with zero forgotten exports.
 
 ### Why Prerelease Is `ReadonlyArray<string | number>`
 
@@ -147,16 +156,16 @@ TaggedClass because:
 **Tag:** `"SemVer"`
 
 ```typescript
-const NonNegativeInt = Schema.Int.pipe(Schema.filter((n) => n >= 0));
-const PrereleaseItem = Schema.Union(Schema.String, NonNegativeInt);
+/** @internal */
+export const SemVerBase = Data.TaggedClass("SemVer");
 
-class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
-  major: NonNegativeInt,
-  minor: NonNegativeInt,
-  patch: NonNegativeInt,
-  prerelease: Schema.Array(PrereleaseItem),
-  build: Schema.Array(Schema.String),
-}) {
+class SemVer extends SemVerBase<{
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+  readonly prerelease: ReadonlyArray<string | number>;
+  readonly build: ReadonlyArray<string>;
+}> {
   [Equal.symbol](that: Equal.Equal): boolean { /* ... */ }
   [Hash.symbol](): number { /* ... */ }
   toString(): string { /* ... */ }
@@ -165,12 +174,16 @@ class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 }
 ```
 
-**Why `Schema.Int.pipe(Schema.filter(...))` instead of `Schema.NonNegativeInt`:**
-`Schema.NonNegativeInt` applies a Brand (`NonNegativeInt & Brand<"NonNegativeInt">`)
-that leaks into the consumer API, requiring callers to brand their numbers before
-constructing a SemVer. Using `Schema.Int.pipe(Schema.filter((n) => n >= 0))`
-validates at construction time but keeps the external type as plain `number`,
-which is the ergonomic choice for a public API.
+**Split base pattern:** The `SemVerBase` constant is exported with
+`@internal` JSDoc so api-extractor can name the base type in the `.d.ts`
+rollup without exposing it as public API. This is the same pattern used for
+all error classes (`Data.TaggedError`) and services (`Context.GenericTag`).
+
+**Field types are plain TypeScript:** Fields use `number`,
+`ReadonlyArray<string | number>`, and `ReadonlyArray<string>` directly.
+There are no Schema types (no `Schema.Int`, no `Schema.Array`, etc.).
+Validation of non-negative integers and safe integer bounds is handled by
+the parser at parse time, not by schema validation at construction time.
 
 #### Fields
 
@@ -227,11 +240,11 @@ per SemVer 2.0.0 spec clause 11.
 }
 ```
 
-**Why the override is mandatory:** The default `Data.Class` equality performs
-shallow reference comparison on arrays, which means two SemVer instances with
-identical prerelease elements but different array references would not be
-equal. Additionally, the default hash includes all fields, so build metadata
-would affect hash values.
+**Why the override is mandatory:** The default `Data.TaggedClass` equality
+performs shallow reference comparison on arrays, which means two SemVer
+instances with identical prerelease elements but different array references
+would not be equal. Additionally, the default hash includes all fields, so
+build metadata would affect hash values.
 
 #### Trait: Hash
 
@@ -287,12 +300,14 @@ SemVer implements three Inspectable methods:
 - **`[Symbol.for("nodejs.util.inspect.custom")]()`**: Returns the same string
   as `toString()` for clean Node.js console output.
 
-#### Construction: `disableValidation` for Parser Internals
+#### Construction
 
-When constructing SemVer instances inside the parser (where input has already
-been validated by the grammar), `{ disableValidation: true }` is passed as the
-second argument to skip redundant schema validation. This is used in the
-parser, bump operations, desugar, and normalize modules.
+Data.TaggedClass constructors take a single object argument with the field
+values. There is no `{ disableValidation: true }` second argument (that was
+a Schema.TaggedClass feature removed in the migration). Since field types
+are plain TypeScript, no runtime schema validation occurs at construction
+time. The parser validates input before constructing instances; bump
+operations produce values that are correct by construction.
 
 ---
 
@@ -302,10 +317,13 @@ parser, bump operations, desugar, and normalize modules.
 **Tag:** `"Comparator"`
 
 ```typescript
-class Comparator extends Schema.TaggedClass<Comparator>()("Comparator", {
-  operator: Schema.Literal("=", ">", ">=", "<", "<="),
-  version: SemVer,
-}) {
+/** @internal */
+export const ComparatorBase = Data.TaggedClass("Comparator");
+
+class Comparator extends ComparatorBase<{
+  readonly operator: "=" | ">" | ">=" | "<" | "<=";
+  readonly version: SemVer;
+}> {
   toString(): string {
     const op = this.operator === "=" ? "" : this.operator;
     return `${op}${this.version.toString()}`;
@@ -355,9 +373,12 @@ the set. An empty ComparatorSet `[]` matches all versions (vacuous truth).
 **Tag:** `"Range"`
 
 ```typescript
-class Range extends Schema.TaggedClass<Range>()("Range", {
-  sets: Schema.Array(Schema.Array(Comparator)),
-}) {
+/** @internal */
+export const RangeBase = Data.TaggedClass("Range");
+
+class Range extends RangeBase<{
+  readonly sets: ReadonlyArray<ReadonlyArray<Comparator>>;
+}> {
   toString(): string {
     return this.sets.map((set) => set.map((c) => c.toString()).join(" ")).join(" || ");
   }
@@ -382,14 +403,17 @@ sets are joined with ` || `.
 **Tag:** `"VersionDiff"`
 
 ```typescript
-class VersionDiff extends Schema.TaggedClass<VersionDiff>()("VersionDiff", {
-  type: Schema.Literal("major", "minor", "patch", "prerelease", "build", "none"),
-  from: SemVer,
-  to: SemVer,
-  major: Schema.Int,
-  minor: Schema.Int,
-  patch: Schema.Int,
-}) {
+/** @internal */
+export const VersionDiffBase = Data.TaggedClass("VersionDiff");
+
+class VersionDiff extends VersionDiffBase<{
+  readonly type: "major" | "minor" | "patch" | "prerelease" | "build" | "none";
+  readonly from: SemVer;
+  readonly to: SemVer;
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+}> {
   toString(): string {
     return `${this.type} (${this.from.toString()} → ${this.to.toString()})`;
   }
@@ -461,7 +485,7 @@ Used with Effect.Match for type-safe pattern matching (see prettyPrint.ts).
 
 ## Serialization
 
-All data types serialize to JSON via their Schema definitions.
+All data types serialize to JSON via their `toJSON()` methods.
 
 ### SemVer JSON
 

@@ -1,5 +1,8 @@
-import { Schema } from "effect";
-import { SemVer } from "./SemVer.js";
+import { Data } from "effect";
+import type { SemVer } from "./SemVer.js";
+
+/** @internal */
+export const VersionDiffBase = Data.TaggedClass("VersionDiff");
 
 /**
  * The result of computing the difference between two {@link SemVer} versions.
@@ -33,14 +36,14 @@ import { SemVer } from "./SemVer.js";
  * @see {@link diff}
  * @see {@link SemVer}
  */
-export class VersionDiff extends Schema.TaggedClass<VersionDiff>()("VersionDiff", {
-	type: Schema.Literal("major", "minor", "patch", "prerelease", "build", "none"),
-	from: SemVer,
-	to: SemVer,
-	major: Schema.Int,
-	minor: Schema.Int,
-	patch: Schema.Int,
-}) {
+export class VersionDiff extends VersionDiffBase<{
+	readonly type: "major" | "minor" | "patch" | "prerelease" | "build" | "none";
+	readonly from: SemVer;
+	readonly to: SemVer;
+	readonly major: number;
+	readonly minor: number;
+	readonly patch: number;
+}> {
 	toString(): string {
 		return `${this.type} (${this.from.toString()} → ${this.to.toString()})`;
 	}

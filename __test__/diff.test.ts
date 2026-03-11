@@ -9,7 +9,7 @@ const v = (
 	patch: number,
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
-) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] }, { disableValidation: true });
+) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] });
 
 describe("diff", () => {
 	it("major bump: diff(1.0.0, 2.0.0)", () => {

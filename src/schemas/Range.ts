@@ -1,5 +1,5 @@
-import { Schema } from "effect";
-import { Comparator } from "./Comparator.js";
+import { Data } from "effect";
+import type { Comparator } from "./Comparator.js";
 
 /**
  * A comparator set: an array of {@link Comparator} instances combined with AND
@@ -8,6 +8,9 @@ import { Comparator } from "./Comparator.js";
  * @see {@link Range}
  */
 export type ComparatorSet = ReadonlyArray<Comparator>;
+
+/** @internal */
+export const RangeBase = Data.TaggedClass("Range");
 
 /**
  * A SemVer range expression, represented as a union (OR) of {@link ComparatorSet}s.
@@ -33,9 +36,9 @@ export type ComparatorSet = ReadonlyArray<Comparator>;
  * @see {@link ComparatorSet}
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
  */
-export class Range extends Schema.TaggedClass<Range>()("Range", {
-	sets: Schema.Array(Schema.Array(Comparator)),
-}) {
+export class Range extends RangeBase<{
+	readonly sets: ReadonlyArray<ReadonlyArray<Comparator>>;
+}> {
 	toString(): string {
 		return this.sets.map((set) => set.map((c) => c.toString()).join(" ")).join(" || ");
 	}

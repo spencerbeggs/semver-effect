@@ -8,7 +8,7 @@ const v = (
 	patch: number,
 	prerelease: ReadonlyArray<string | number> = [],
 	build: ReadonlyArray<string> = [],
-) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] }, { disableValidation: true });
+) => new SemVer({ major, minor, patch, prerelease: [...prerelease], build: [...build] });
 
 describe("bumpMajor", () => {
 	it("1.2.3-alpha+build -> 2.0.0 (clears pre, build, zeroes minor+patch)", () => {
