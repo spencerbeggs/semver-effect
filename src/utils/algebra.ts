@@ -182,6 +182,14 @@ const isComparatorSetSubset = (sub: ReadonlyArray<Comparator>, sup: ReadonlyArra
  * the `sup` range. This is determined by checking that every comparator set in
  * `sub` is implied by at least one comparator set in `sup`.
  *
+ * @remarks
+ * This check is a conservative approximation: it may return `false` for ranges
+ * that are technically subsets when the sub-range straddles comparator-set
+ * boundaries in the sup-range. For example, `>=1.0.0 <3.0.0` is a subset of
+ * `>=1.0.0 <2.0.0 || >=2.0.0 <3.0.0`, but `isSubset` returns `false` because
+ * no single sup-set fully implies the sub-set. This is a known limitation;
+ * false negatives are safe (they prevent incorrect simplification).
+ *
  * @see {@link equivalent}
  * @see {@link intersect}
  */
@@ -221,7 +229,7 @@ export const equivalent: {
  */
 export const simplify = (range: Range): Range => {
 	const sets = range.sets.filter((set, i) => {
-		return !range.sets.some((other, j) => i !== j && isComparatorSetSubset(other, set));
+		return !range.sets.some((other, j) => i !== j && isComparatorSetSubset(set, other));
 	});
 
 	if (sets.length === 0) return range;

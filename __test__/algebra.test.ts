@@ -114,6 +114,16 @@ describe("simplify", () => {
 		const result = simplify(range);
 		expect(result.sets.length).toBe(2);
 	});
+
+	it("removes the narrower set when a wider set exists", () => {
+		const range = r(">=0.0.0 || >=1.0.0 <2.0.0");
+		const result = simplify(range);
+		// >=0.0.0 is wider and subsumes >=1.0.0 <2.0.0, so only 1 set remains
+		expect(result.sets.length).toBe(1);
+		// The surviving set should match all versions (>=0.0.0)
+		expect(satisfies(v(0, 0, 0), result)).toBe(true);
+		expect(satisfies(v(5, 0, 0), result)).toBe(true);
+	});
 });
 
 describe("dual API", () => {
