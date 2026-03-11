@@ -165,12 +165,12 @@ This distinction is critical for correct ordering:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, compare } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.0.0-beta.2");
-  const b = yield* parseVersion("1.0.0-beta.11");
-  console.log(compare(a, b)); // -1 (2 < 11, numeric comparison)
+  const a = yield* SemVer.fromString("1.0.0-beta.2");
+  const b = yield* SemVer.fromString("1.0.0-beta.11");
+  console.log(SemVer.compare(a, b)); // -1 (2 < 11, numeric comparison)
 
   // With string comparison, "2" > "11" would be wrong
 });
@@ -254,19 +254,19 @@ This means:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, parseRange, satisfies } from "semver-effect";
+import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* parseVersion("3.0.0-beta.1");
+  const v = yield* SemVer.fromString("3.0.0-beta.1");
 
   // Satisfies: comparator >=3.0.0-alpha.0 has prerelease AND same tuple [3,0,0]
-  const r1 = yield* parseRange(">=3.0.0-alpha.0");
-  console.log(satisfies(v, r1)); // true
+  const r1 = yield* Range.fromString(">=3.0.0-alpha.0");
+  console.log(Range.satisfies(v, r1)); // true
 
   // Does NOT satisfy: >=2.9.0 has no prerelease on the [3,0,0] tuple
   // Even though 3.0.0-beta.1 > 2.9.0 by precedence
-  const r2 = yield* parseRange(">=2.9.0");
-  console.log(satisfies(v, r2)); // false
+  const r2 = yield* Range.fromString(">=2.9.0");
+  console.log(Range.satisfies(v, r2)); // false
 });
 ```
 
@@ -294,10 +294,10 @@ An empty string parses to a range matching all versions (`>=0.0.0`):
 
 ```typescript
 import { Effect } from "effect";
-import { parseRange } from "semver-effect";
+import { Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const range = yield* parseRange("");
+  const range = yield* Range.fromString("");
   // Equivalent to "*" -- matches everything
 });
 ```

@@ -21,3 +21,4 @@ For detailed installation options and your first program, see the
 | [Effect Integration](./effect-integration.md) | Services, layers, dependency injection, error handling patterns, and layer composition |
 | [node-semver Migration](./node-semver-migration.md) | Side-by-side comparison with node-semver, migration patterns, and unsupported features |
 | [SemVer Spec Compliance](./semver-spec-compliance.md) | How the library implements the SemVer 2.0.0 specification, precedence rules, and edge cases |
+| [Advanced Example](./advanced-example.md) | Building a document version system with Effect — demonstrates services, layers, typed errors, and the full semver-effect API |
