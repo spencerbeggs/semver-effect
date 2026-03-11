@@ -25,7 +25,11 @@ export const fromString = parseRange;
 // Constants
 // ---------------------------------------------------------------------------
 
-/** A {@link Range} that matches any version (`>=0.0.0`). */
+/**
+ * A {@link Range} that matches any version (`>=0.0.0`).
+ *
+ * Note: constructs SemVer/Comparator inline to avoid circular dependency with those modules.
+ */
 export const any: Range = new Range({
 	sets: [
 		[

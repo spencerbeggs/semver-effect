@@ -20,7 +20,11 @@ export const fromString = parseSingleComparator;
 // Constants
 // ---------------------------------------------------------------------------
 
-/** A {@link Comparator} matching any version (`>=0.0.0`). */
+/**
+ * A {@link Comparator} matching any version (`>=0.0.0`).
+ *
+ * Note: constructs SemVer inline to avoid circular dependency with SemVer module.
+ */
 export const any: Comparator = new Comparator({
 	operator: ">=",
 	version: new SemVer({ major: 0, minor: 0, patch: 0, prerelease: [], build: [] }),

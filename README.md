@@ -9,10 +9,10 @@ loose mode.
 
 ## Features
 
+- Effect-idiomatic namespaced API (`SemVer.*`, `Range.*`) matching Effect's own conventions
 - Strict SemVer 2.0.0 parsing with precise error positions (recursive descent, no regex)
 - Typed error channel for every operation -- handle `InvalidVersionError`, `UnsatisfiedRangeError`, and others explicitly
 - Range algebra: intersect, union, subset, equivalence, and simplification
-- Version cache service for querying, resolving, and navigating sets of versions
 - Dual-style API: all comparison and matching functions support both `pipe` and direct call
 
 ## Installation
@@ -24,17 +24,22 @@ npm install semver-effect effect
 ## Quick Start
 
 ```typescript
-import { Effect } from "effect";
-import type { SemVer } from "semver-effect";
-import { parseVersion, parseRange, satisfies, gt, compare } from "semver-effect";
+import { Effect, pipe } from "effect";
+import { SemVer, Range } from "semver-effect";
 
+// Direct construction -- no parsing needed
+const v = SemVer.make(1, 4, 2);
+const next = SemVer.bump.minor(v);            // 1.5.0
+pipe(v, SemVer.gt(SemVer.make(0, 9, 0)));     // true
+
+// Parsing strings returns Effect with typed errors
 const program = Effect.gen(function* () {
-  const version: SemVer = yield* parseVersion("1.4.2");
-  const range = yield* parseRange("^1.2.0");
+  const version = yield* SemVer.fromString("1.4.2");
+  const range = yield* Range.fromString("^1.2.0");
 
-  console.log(satisfies(version, range)); // true
-  console.log(gt(version, yield* parseVersion("1.3.0"))); // true
-  console.log(compare(version, yield* parseVersion("2.0.0"))); // -1
+  Range.satisfies(version, range);             // true
+  SemVer.gt(version, yield* SemVer.fromString("1.3.0")); // true
+  SemVer.compare(version, yield* SemVer.fromString("2.0.0")); // -1
 });
 
 Effect.runSync(program);
@@ -43,7 +48,7 @@ Effect.runSync(program);
 ## Documentation
 
 For API reference, Effect integration patterns, migration guides, and SemVer
-spec compliance details, see [docs](./docs).
+spec compliance details, see [docs/](./docs/).
 
 ## License
 
