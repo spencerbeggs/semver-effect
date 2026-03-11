@@ -56,13 +56,13 @@ const satisfiesComparatorSet = (version: SemVer, set: ReadonlyArray<Comparator>)
  *
  * @example
  * ```typescript
- * import { satisfies, parseVersion, parseRange } from "semver-effect";
+ * import { Range, SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* parseVersion("1.5.0");
- *   const r = yield* parseRange("^1.0.0");
- *   console.log(satisfies(v, r)); // true
+ *   const v = yield* SemVer.fromString("1.5.0");
+ *   const r = yield* Range.fromString("^1.0.0");
+ *   console.log(Range.satisfies(v, r)); // true
  * });
  * ```
  *

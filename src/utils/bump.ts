@@ -8,12 +8,12 @@ const sv = (major: number, minor: number, patch: number, prerelease: ReadonlyArr
  *
  * @example
  * ```typescript
- * import { bumpMajor, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* parseVersion("1.2.3");
- *   console.log(bumpMajor(v).toString()); // "2.0.0"
+ *   const v = yield* SemVer.fromString("1.2.3");
+ *   console.log(SemVer.bump.major(v).toString()); // "2.0.0"
  * });
  * ```
  *
@@ -52,13 +52,13 @@ export const bumpPatch = (v: SemVer): SemVer => sv(v.major, v.minor, v.patch + 1
  *
  * @example
  * ```typescript
- * import { bumpPrerelease, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* parseVersion("1.0.0-alpha.3");
- *   console.log(bumpPrerelease(v, "alpha").toString()); // "1.0.0-alpha.4"
- *   console.log(bumpPrerelease(v, "beta").toString());  // "1.0.0-beta.0"
+ *   const v = yield* SemVer.fromString("1.0.0-alpha.3");
+ *   console.log(SemVer.bump.prerelease(v, "alpha").toString()); // "1.0.0-alpha.4"
+ *   console.log(SemVer.bump.prerelease(v, "beta").toString());  // "1.0.0-beta.0"
  * });
  * ```
  *
@@ -102,12 +102,12 @@ export const bumpPrerelease = (v: SemVer, id?: string): SemVer => {
  *
  * @example
  * ```typescript
- * import { bumpRelease, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* parseVersion("1.2.3-rc.1");
- *   console.log(bumpRelease(v).toString()); // "1.2.3"
+ *   const v = yield* SemVer.fromString("1.2.3-rc.1");
+ *   console.log(SemVer.bump.release(v).toString()); // "1.2.3"
  * });
  * ```
  *

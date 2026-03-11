@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-11
+last-synced: 2026-03-11
 completeness: 95
 related:
   - architecture.md
@@ -60,8 +60,17 @@ layers and provide the primary user-facing functionality.
   `isSubset`/`equivalent` are pure
 - Bump operations are pure functions (no Effect wrapper)
 - All binary operations use `Function.dual` for data-first/data-last support
+- All operations are accessed through namespace modules: `SemVer.gt()`,
+  `Range.satisfies()`, `SemVer.bump.major()`, `PrettyPrint.prettyPrint()`.
+  No standalone function exports exist in the public API.
 
-**File Locations:**
+**Public API Access (namespace modules):**
+
+- `SemVer.*` -- comparison, collection, diff, bump, ordering, Schema transforms
+- `Range.*` -- matching, algebra, Schema transforms
+- `PrettyPrint.*` -- pretty printing
+
+**Internal File Locations:**
 
 - `src/utils/compare.ts` -- comparison helpers and collection operations
 - `src/utils/matching.ts` -- range matching logic
@@ -109,38 +118,43 @@ return `Option<SemVer>`. "No match" is a normal outcome, not an error.
 (`UnsatisfiableConstraintError`). `union`, `simplify`, `isSubset`, and
 `equivalent` cannot fail and are pure functions.
 
-### Why Bump Operations Are Standalone Functions
+### Why Bump Operations Are in a Sub-Namespace
 
-Bump operations (`bumpMajor`, `bumpMinor`, `bumpPatch`, `bumpPrerelease`,
-`bumpRelease`) are exported as standalone functions from `src/utils/bump.ts`,
-not as static methods on SemVer. This follows the Effect convention of
-composable utility functions and keeps the SemVer class focused on data.
+Bump operations are grouped under `SemVer.bump.*` (`SemVer.bump.major`,
+`SemVer.bump.minor`, etc.) rather than being top-level on `SemVer` or static
+methods on the class. This follows the Effect convention of grouping related
+operations and keeps the `SemVer` namespace organized. Internally they are
+standalone functions in `src/utils/bump.ts`; the `SemVer.bump` object in
+`src/SemVer.ts` simply collects them.
 
 ---
 
 ## Comparison Operations
 
-### API Surface (src/utils/compare.ts)
+### API Surface
 
-All binary operations use `Function.dual(2, ...)` for data-first/data-last:
+Accessed via the `SemVer` namespace. All binary operations use
+`Function.dual(2, ...)` for data-first/data-last:
 
 ```text
-compare(self: SemVer, that: SemVer): -1 | 0 | 1
-equal(self: SemVer, that: SemVer): boolean
-gt(self: SemVer, that: SemVer): boolean
-gte(self: SemVer, that: SemVer): boolean
-lt(self: SemVer, that: SemVer): boolean
-lte(self: SemVer, that: SemVer): boolean
-neq(self: SemVer, that: SemVer): boolean
-isPrerelease(v: SemVer): boolean
-isStable(v: SemVer): boolean
-truncate(v: SemVer, level: "prerelease" | "build"): SemVer
-sort(versions: ReadonlyArray<SemVer>): Array<SemVer>
-rsort(versions: ReadonlyArray<SemVer>): Array<SemVer>
-max(versions: ReadonlyArray<SemVer>): Option<SemVer>
-min(versions: ReadonlyArray<SemVer>): Option<SemVer>
-compareWithBuild(self: SemVer, that: SemVer): -1 | 0 | 1
+SemVer.compare(self, that): -1 | 0 | 1
+SemVer.equal(self, that): boolean
+SemVer.gt(self, that): boolean
+SemVer.gte(self, that): boolean
+SemVer.lt(self, that): boolean
+SemVer.lte(self, that): boolean
+SemVer.neq(self, that): boolean
+SemVer.isPrerelease(v): boolean
+SemVer.isStable(v): boolean
+SemVer.truncate(v, level): SemVer
+SemVer.sort(versions): Array<SemVer>
+SemVer.rsort(versions): Array<SemVer>
+SemVer.max(versions): Option<SemVer>
+SemVer.min(versions): Option<SemVer>
+SemVer.compareWithBuild(self, that): -1 | 0 | 1
 ```
+
+**Internal implementation:** `src/utils/compare.ts`
 
 ### Ordering Rules (SemVer 2.0.0 Section 11)
 
@@ -155,14 +169,20 @@ compareWithBuild(self: SemVer, that: SemVer): -1 | 0 | 1
    without prerelease.
 4. **Build metadata is ignored** in all standard comparisons.
 
-### Order Instances (src/utils/order.ts)
+### Order & Equivalence Instances
 
-- **`SemVerOrder`**: Standard SemVer 2.0.0 precedence. Build metadata ignored.
-- **`SemVerOrderWithBuild`**: Extends standard comparison with lexicographic
+Accessed via the `SemVer` namespace:
+
+- **`SemVer.Order`**: Standard SemVer 2.0.0 precedence. Build metadata ignored.
+  (Internally: `SemVerOrder` from `src/utils/order.ts`.)
+- **`SemVer.OrderWithBuild`**: Extends standard comparison with lexicographic
   build metadata comparison when versions are otherwise equal. No build
   metadata sorts before having build metadata.
+  (Internally: `SemVerOrderWithBuild` from `src/utils/order.ts`.)
+- **`SemVer.Equivalence`**: `Equivalence<SemVer>` instance that delegates to
+  `SemVer.equal`.
 
-Both are exported as `Order.Order<SemVer>` instances.
+`Order` and `OrderWithBuild` are `Order.Order<SemVer>` instances.
 
 ### Collection Helpers
 
@@ -188,16 +208,20 @@ Build metadata excluded per spec. Delegates to `Equal.equals`.
 
 ## Range Matching
 
-### API Surface (src/utils/matching.ts)
+### API Surface
+
+Accessed via the `Range` namespace:
 
 ```text
-satisfies(version: SemVer, range: Range): boolean
-filter(versions: ReadonlyArray<SemVer>, range: Range): Array<SemVer>
-maxSatisfying(versions: ReadonlyArray<SemVer>, range: Range): Option<SemVer>
-minSatisfying(versions: ReadonlyArray<SemVer>, range: Range): Option<SemVer>
+Range.satisfies(version, range): boolean
+Range.filter(versions, range): Array<SemVer>
+Range.maxSatisfying(versions, range): Option<SemVer>
+Range.minSatisfying(versions, range): Option<SemVer>
 ```
 
 All use `Function.dual(2, ...)`.
+
+**Internal implementation:** `src/utils/matching.ts`
 
 ### Matching Algorithm
 
@@ -231,19 +255,23 @@ misconfiguration errors.
 
 ## Range Algebra
 
-### API Surface (src/utils/algebra.ts)
+### API Surface
+
+Accessed via the `Range` namespace:
 
 ```text
-union(a: Range, b: Range): Range
-intersect(a: Range, b: Range): Effect<Range, UnsatisfiableConstraintError>
-simplify(range: Range): Range
-isSubset(sub: Range, sup: Range): boolean
-equivalent(a: Range, b: Range): boolean
+Range.union(a, b): Range
+Range.intersect(a, b): Effect<Range, UnsatisfiableConstraintError>
+Range.simplify(range): Range
+Range.isSubset(sub, sup): boolean
+Range.equivalent(a, b): boolean
 ```
 
 `union`, `simplify`, `isSubset`, and `equivalent` are pure functions.
 `intersect` returns Effect because it can fail. All binary operations use
 `Function.dual(2, ...)`.
+
+**Internal implementation:** `src/utils/algebra.ts`
 
 ### Union
 
@@ -274,32 +302,39 @@ ComparatorSet in `sup`. Uses comparator implication logic.
 
 ## Bumping
 
-### API Surface (src/utils/bump.ts)
+### API Surface
+
+Accessed via the `SemVer.bump` sub-namespace:
 
 ```text
-bumpMajor(v: SemVer): SemVer
-bumpMinor(v: SemVer): SemVer
-bumpPatch(v: SemVer): SemVer
-bumpPrerelease(v: SemVer, id?: string): SemVer
-bumpRelease(v: SemVer): SemVer
+SemVer.bump.major(v): SemVer
+SemVer.bump.minor(v): SemVer
+SemVer.bump.patch(v): SemVer
+SemVer.bump.prerelease(v, id?): SemVer
+SemVer.bump.release(v): SemVer
 ```
 
 All are pure functions returning new SemVer instances. Since Data.TaggedClass
 constructors have no runtime schema validation, bumped values are constructed
 directly from computed fields that are correct by construction.
 
+The `bump` sub-namespace is a plain object on the `SemVer` namespace module
+(`src/SemVer.ts`), grouping the functions from `src/utils/bump.ts`.
+
+**Internal implementation:** `src/utils/bump.ts`
+
 ### Bump Rules
 
-**`bumpMajor`**: Increments major, resets minor/patch to 0, clears
+**`SemVer.bump.major`**: Increments major, resets minor/patch to 0, clears
 prerelease/build. `1.2.3-alpha` -> `2.0.0`.
 
-**`bumpMinor`**: Increments minor, resets patch to 0, clears
+**`SemVer.bump.minor`**: Increments minor, resets patch to 0, clears
 prerelease/build. `1.2.3-alpha` -> `1.3.0`.
 
-**`bumpPatch`**: Increments patch, clears prerelease/build.
+**`SemVer.bump.patch`**: Increments patch, clears prerelease/build.
 `1.2.3-alpha` -> `1.2.4`.
 
-**`bumpPrerelease(v, id?)`**:
+**`SemVer.bump.prerelease(v, id?)`**:
 
 - No prerelease, no id: bump patch, add `[0]`. `1.0.0` -> `1.0.1-0`
 - No prerelease, with id: bump patch, add `[id, 0]`. `1.0.0` -> `1.0.1-beta.0`
@@ -308,20 +343,24 @@ prerelease/build. `1.2.3-alpha` -> `1.3.0`.
 - Has prerelease, different id: reset to `[id, 0]`.
   `1.0.0-alpha.1` with id `"beta"` -> `1.0.0-beta.0`
 
-**`bumpRelease`**: Strips prerelease and build, keeps version numbers.
+**`SemVer.bump.release`**: Strips prerelease and build, keeps version numbers.
 `1.2.3-alpha.1+build` -> `1.2.3`.
 
 ---
 
 ## Diffing
 
-### API Surface (src/utils/diff.ts)
+### API Surface
+
+Accessed via the `SemVer` namespace:
 
 ```text
-diff(a: SemVer, b: SemVer): VersionDiff
+SemVer.diff(a, b): VersionDiff
 ```
 
 Uses `Function.dual(2, ...)`. Pure function -- always produces a result.
+
+**Internal implementation:** `src/utils/diff.ts`
 
 ### Classification Rules
 
@@ -342,16 +381,20 @@ Delta fields are signed: `b.field - a.field`.
 
 ## Pretty Printing
 
-### API Surface (src/utils/prettyPrint.ts)
+### API Surface
+
+Accessed via the `PrettyPrint` namespace:
 
 ```text
-prettyPrint(value: Printable): string
-type Printable = SemVer | Comparator | Range | VersionDiff
+PrettyPrint.prettyPrint(value: Printable): string
+type PrettyPrint.Printable = SemVer | Comparator | Range | VersionDiff
 ```
 
 Uses `Match.type<Printable>()` with `Match.tag` for each type and
 `Match.exhaustive` to ensure all types are handled. Delegates to each
 type's `toString()` method.
+
+**Internal implementation:** `src/utils/prettyPrint.ts`
 
 ---
 

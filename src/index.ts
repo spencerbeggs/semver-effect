@@ -26,8 +26,9 @@
  * @packageDocumentation
  */
 
+// Namespaced modules
 export * as Comparator from "./Comparator.js";
-// ── Errors ──────────────────────────────────────────────────────────
+// Errors
 export {
 	EmptyCacheError,
 	EmptyCacheErrorBase,
@@ -68,14 +69,13 @@ export {
 	VersionNotFoundError,
 	VersionNotFoundErrorBase,
 } from "./errors/VersionNotFoundError.js";
-// ── Layers ──────────────────────────────────────────────────────────
+// Layers
 export { SemVerParserLive } from "./layers/SemVerParserLive.js";
 export { VersionCacheLive } from "./layers/VersionCacheLive.js";
 export * as PrettyPrint from "./PrettyPrint.js";
 export * as Range from "./Range.js";
-// ── Namespaced modules ──────────────────────────────────────────────
 export * as SemVer from "./SemVer.js";
-// ── Services ────────────────────────────────────────────────────────
+// Services
 export { SemVerParser } from "./services/SemVerParser.js";
 export { VersionCache } from "./services/VersionCache.js";
 export { VersionFetcher } from "./services/VersionFetcher.js";

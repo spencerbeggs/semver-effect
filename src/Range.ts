@@ -19,7 +19,7 @@ export type { ComparatorSet };
 // ---------------------------------------------------------------------------
 
 /** Parse a SemVer range expression string into a {@link Range}. */
-export const fromString: typeof parseRange = parseRange;
+export const fromString = parseRange;
 
 // ---------------------------------------------------------------------------
 // Constants

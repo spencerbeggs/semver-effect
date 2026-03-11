@@ -1,14 +1,15 @@
 import { Cause, Chunk, Effect, Exit } from "effect";
 import { describe, expect, it } from "vitest";
+import * as Comparator from "../src/Comparator.js";
 import { InvalidComparatorError } from "../src/errors/InvalidComparatorError.js";
 import { InvalidRangeError } from "../src/errors/InvalidRangeError.js";
-import { parseRangeSet, parseSingleComparator } from "../src/utils/grammar.js";
+import * as Range from "../src/Range.js";
 
-const parseRange = (input: string) => Effect.runSync(parseRangeSet(input));
-const parseComp = (input: string) => Effect.runSync(parseSingleComparator(input));
+const parseRange = (input: string) => Effect.runSync(Range.fromString(input));
+const parseComp = (input: string) => Effect.runSync(Comparator.fromString(input));
 
 const getRangeError = (input: string): InvalidRangeError => {
-	const exit = Effect.runSyncExit(parseRangeSet(input));
+	const exit = Effect.runSyncExit(Range.fromString(input));
 	if (Exit.isFailure(exit)) {
 		const failures = Cause.failures(exit.cause);
 		const first = Chunk.get(failures, 0);
@@ -20,7 +21,7 @@ const getRangeError = (input: string): InvalidRangeError => {
 };
 
 const getCompError = (input: string): InvalidComparatorError => {
-	const exit = Effect.runSyncExit(parseSingleComparator(input));
+	const exit = Effect.runSyncExit(Comparator.fromString(input));
 	if (Exit.isFailure(exit)) {
 		const failures = Cause.failures(exit.cause);
 		const first = Chunk.get(failures, 0);

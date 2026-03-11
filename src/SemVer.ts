@@ -55,7 +55,7 @@ export const ZERO: SemVer = make(0, 0, 0);
 // ---------------------------------------------------------------------------
 
 /** Parse a strict SemVer 2.0.0 string into a {@link SemVer}. */
-export const fromString: typeof parseValidSemVer = parseValidSemVer;
+export const fromString = parseValidSemVer;
 
 // ---------------------------------------------------------------------------
 // Comparison & predicates
@@ -96,11 +96,11 @@ export const bump = {
 // Order & Equivalence
 // ---------------------------------------------------------------------------
 
-/** Effect {@link import("effect").Order.Order} for SemVer precedence (ignores build). */
-export const Order: typeof SemVerOrder = SemVerOrder;
+/** Effect `Order` for SemVer precedence (ignores build). */
+export const Order = SemVerOrder;
 
-/** Effect {@link import("effect").Order.Order} for SemVer precedence including build metadata. */
-export const OrderWithBuild: typeof SemVerOrderWithBuild = SemVerOrderWithBuild;
+/** Effect `Order` for SemVer precedence including build metadata. */
+export const OrderWithBuild = SemVerOrderWithBuild;
 
 /** Effect {@link Eq.Equivalence} for SemVer (ignores build metadata). */
 export const Equivalence: Eq.Equivalence<SemVer> = Eq.make((self, that) => equal(self, that));

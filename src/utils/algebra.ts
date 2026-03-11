@@ -68,13 +68,13 @@ const isSetSatisfiable = (set: ReadonlyArray<Comparator>): boolean => {
  *
  * @example
  * ```typescript
- * import { union, parseRange } from "semver-effect";
+ * import { Range } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* parseRange("^1.0.0");
- *   const b = yield* parseRange("^2.0.0");
- *   const combined = union(a, b);
+ *   const a = yield* Range.fromString("^1.0.0");
+ *   const b = yield* Range.fromString("^2.0.0");
+ *   const combined = Range.union(a, b);
  *   // combined matches versions satisfying ^1.0.0 OR ^2.0.0
  * });
  * ```
@@ -98,13 +98,13 @@ export const union: {
  *
  * @example
  * ```typescript
- * import { intersect, parseRange } from "semver-effect";
+ * import { Range } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* parseRange(">=1.0.0");
- *   const b = yield* parseRange("<2.0.0");
- *   const both = yield* intersect(a, b);
+ *   const a = yield* Range.fromString(">=1.0.0");
+ *   const b = yield* Range.fromString("<2.0.0");
+ *   const both = yield* Range.intersect(a, b);
  *   // both matches >=1.0.0 AND <2.0.0
  * });
  * ```

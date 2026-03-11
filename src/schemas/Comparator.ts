@@ -20,11 +20,11 @@ export const ComparatorBase = Data.TaggedClass("Comparator");
  *
  * @example
  * ```typescript
- * import { parseComparator } from "semver-effect";
+ * import { Comparator } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const comp = yield* parseComparator(">=1.2.3");
+ *   const comp = yield* Comparator.fromString(">=1.2.3");
  *   console.log(comp.operator); // ">="
  *   console.log(comp.version.toString()); // "1.2.3"
  *   console.log(comp.toString()); // ">=1.2.3"

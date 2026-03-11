@@ -1,11 +1,11 @@
 import { Equal, Hash } from "effect";
 import { describe, expect, it } from "vitest";
-import { SemVer } from "../src/schemas/SemVer.js";
+import * as SemVer from "../src/SemVer.js";
 
 describe("SemVer", () => {
 	describe("Construction", () => {
 		it("creates with all required fields", () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 2,
 				patch: 3,
@@ -20,7 +20,7 @@ describe("SemVer", () => {
 		});
 
 		it('has correct _tag of "SemVer"', () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -31,7 +31,7 @@ describe("SemVer", () => {
 		});
 
 		it("fields are accessible and readonly", () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 2,
 				minor: 3,
 				patch: 4,
@@ -46,7 +46,7 @@ describe("SemVer", () => {
 		});
 
 		it("prerelease defaults to empty array when []", () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -58,7 +58,7 @@ describe("SemVer", () => {
 		});
 
 		it("build defaults to empty array when []", () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -72,14 +72,14 @@ describe("SemVer", () => {
 
 	describe("Equal (ignoring build metadata)", () => {
 		it("two identical versions are equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 2,
 				patch: 3,
 				prerelease: ["alpha", 1],
 				build: ["001"],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 2,
 				patch: 3,
@@ -90,14 +90,14 @@ describe("SemVer", () => {
 		});
 
 		it("versions differing only in build metadata ARE equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: [],
 				build: ["build1"],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -108,14 +108,14 @@ describe("SemVer", () => {
 		});
 
 		it("versions differing in major are NOT equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: [],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 2,
 				minor: 0,
 				patch: 0,
@@ -126,14 +126,14 @@ describe("SemVer", () => {
 		});
 
 		it("versions differing in minor are NOT equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: [],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 1,
 				patch: 0,
@@ -144,14 +144,14 @@ describe("SemVer", () => {
 		});
 
 		it("versions differing in patch are NOT equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: [],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 1,
@@ -162,14 +162,14 @@ describe("SemVer", () => {
 		});
 
 		it("versions differing in prerelease are NOT equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: ["alpha"],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -180,14 +180,14 @@ describe("SemVer", () => {
 		});
 
 		it('prerelease compared element-wise: ["alpha", 1] === ["alpha", 1]', () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: ["alpha", 1],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -198,14 +198,14 @@ describe("SemVer", () => {
 		});
 
 		it("prerelease with different lengths are NOT equal", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: ["alpha", 1],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -218,14 +218,14 @@ describe("SemVer", () => {
 
 	describe("Hash (consistent with Equal)", () => {
 		it("same version produces same hash", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 2,
 				patch: 3,
 				prerelease: ["alpha", 1],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 2,
 				patch: 3,
@@ -236,14 +236,14 @@ describe("SemVer", () => {
 		});
 
 		it("versions differing only in build produce SAME hash", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: [],
 				build: ["build1"],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -254,14 +254,14 @@ describe("SemVer", () => {
 		});
 
 		it("different versions produce different hashes (probabilistic)", () => {
-			const a = new SemVer({
+			const a = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
 				prerelease: [],
 				build: [],
 			});
-			const b = new SemVer({
+			const b = new SemVer.SemVer({
 				major: 2,
 				minor: 0,
 				patch: 0,
@@ -274,7 +274,7 @@ describe("SemVer", () => {
 
 	describe("Inspectable (toString)", () => {
 		it('1.0.0 -> "1.0.0"', () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -285,7 +285,7 @@ describe("SemVer", () => {
 		});
 
 		it('1.0.0-alpha.1 -> "1.0.0-alpha.1"', () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -296,7 +296,7 @@ describe("SemVer", () => {
 		});
 
 		it('1.0.0+build.001 -> "1.0.0+build.001"', () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -307,7 +307,7 @@ describe("SemVer", () => {
 		});
 
 		it('1.0.0-rc.1+build -> "1.0.0-rc.1+build"', () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,
@@ -320,7 +320,7 @@ describe("SemVer", () => {
 
 	describe("direct construction", () => {
 		it("can construct directly for trusted input", () => {
-			const v = new SemVer({
+			const v = new SemVer.SemVer({
 				major: 1,
 				minor: 0,
 				patch: 0,

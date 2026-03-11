@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: testing
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-11
+last-synced: 2026-03-11
 completeness: 95
 related:
   - architecture.md
@@ -192,6 +192,20 @@ __test__/
   VersionCache.test.ts       -- cache service lifecycle and operations
 ```
 
+### Import Convention
+
+Tests import from the namespace modules (`SemVer`, `Range`, `Comparator`,
+`PrettyPrint`, `VersionDiff`) rather than directly from `utils/` or
+`schemas/`. This mirrors how consumers use the public API:
+
+```typescript
+import { SemVer, Range, PrettyPrint } from "semver-effect";
+```
+
+For test helpers that need direct class access (e.g., constructing fixtures),
+tests may import the class directly from the namespace module since the class
+is re-exported there.
+
 ### Test File Organization
 
 Each test file maps to a specific source module or concern:
@@ -372,7 +386,7 @@ Tests use two patterns depending on whether the operation requires services:
 
 ```typescript
 it("parses a valid version", () => {
-  const v = Effect.runSync(parseValidSemVer("1.2.3"))
+  const v = Effect.runSync(SemVer.fromString("1.2.3"))
   expect(v.major).toBe(1)
 })
 ```
@@ -399,7 +413,7 @@ The cleanest pattern for error assertions uses `Effect.either`:
 ```typescript
 it("rejects leading zeros", () => {
   const result = Effect.runSync(
-    parseValidSemVer("01.0.0").pipe(Effect.either)
+    SemVer.fromString("01.0.0").pipe(Effect.either)
   )
   expect(result._tag).toBe("Left")
   if (result._tag === "Left") {
@@ -444,7 +458,7 @@ const v = (major: number, minor: number, patch: number,
 
 ```typescript
 it("orders versions by precedence", () => {
-  expect(SemVerOrder(parse("1.0.0"), parse("2.0.0"))).toBe(-1)
+  expect(SemVer.Order(parse("1.0.0"), parse("2.0.0"))).toBe(-1)
 })
 
 it("treats build metadata as equal", () => {

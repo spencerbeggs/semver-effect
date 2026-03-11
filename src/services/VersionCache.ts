@@ -20,13 +20,13 @@ import type { VersionDiff } from "../schemas/VersionDiff.js";
  *
  * @example
  * ```typescript
- * import { VersionCache, VersionCacheLive, SemVerParserLive, parseVersion, parseRange } from "semver-effect";
+ * import { SemVer, VersionCache, VersionCacheLive, SemVerParserLive } from "semver-effect";
  * import { Effect, Layer } from "effect";
  *
  * const program = Effect.gen(function* () {
  *   const cache = yield* VersionCache;
- *   const v1 = yield* parseVersion("1.0.0");
- *   const v2 = yield* parseVersion("2.0.0");
+ *   const v1 = yield* SemVer.fromString("1.0.0");
+ *   const v2 = yield* SemVer.fromString("2.0.0");
  *   yield* cache.load([v1, v2]);
  *   const latest = yield* cache.latest();
  *   console.log(latest.toString()); // "2.0.0"

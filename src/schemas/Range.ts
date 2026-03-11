@@ -23,11 +23,11 @@ export const RangeBase = Data.TaggedClass("Range");
  *
  * @example
  * ```typescript
- * import { parseRange } from "semver-effect";
+ * import { Range } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const range = yield* parseRange(">=1.0.0 <2.0.0 || ^3.0.0");
+ *   const range = yield* Range.fromString(">=1.0.0 <2.0.0 || ^3.0.0");
  *   console.log(range.toString()); // ">=1.0.0 <2.0.0 || >=3.0.0 <4.0.0"
  * });
  * ```

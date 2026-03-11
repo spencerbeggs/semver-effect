@@ -14,7 +14,7 @@ export { Comparator, ComparatorBase };
 // ---------------------------------------------------------------------------
 
 /** Parse a single comparator string (e.g. `">=1.2.3"`) into a {@link Comparator}. */
-export const fromString: typeof parseSingleComparator = parseSingleComparator;
+export const fromString = parseSingleComparator;
 
 // ---------------------------------------------------------------------------
 // Constants

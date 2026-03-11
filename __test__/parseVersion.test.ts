@@ -1,12 +1,12 @@
 import { Cause, Chunk, Effect, Exit } from "effect";
 import { describe, expect, it } from "vitest";
 import { InvalidVersionError } from "../src/errors/InvalidVersionError.js";
-import { parseValidSemVer } from "../src/utils/grammar.js";
+import * as SemVer from "../src/SemVer.js";
 
-const parse = (input: string) => Effect.runSync(parseValidSemVer(input));
+const parse = (input: string) => Effect.runSync(SemVer.fromString(input));
 
 const getError = (input: string): InvalidVersionError => {
-	const exit = Effect.runSyncExit(parseValidSemVer(input));
+	const exit = Effect.runSyncExit(SemVer.fromString(input));
 	if (Exit.isFailure(exit)) {
 		const failures = Cause.failures(exit.cause);
 		const first = Chunk.get(failures, 0);
