@@ -25,22 +25,22 @@ no service requirements.
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, compare, satisfies, bumpMajor, diff } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 // No layers needed -- these work standalone
 const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.2.3");
-  const bumped = bumpMajor(v);
-  console.log(compare(v, bumped)); // -1
+  const v = yield* SemVer.fromString("1.2.3");
+  const bumped = SemVer.bump.major(v);
+  console.log(SemVer.compare(v, bumped)); // -1
 });
 
 Effect.runSync(program);
 ```
 
-Standalone functions include: `parseVersion`, `parseRange`, `parseComparator`,
-all comparison functions, all bump functions, `satisfies`, `filter`,
-`maxSatisfying`, `minSatisfying`, `diff`, all algebra functions, `sort`,
-`rsort`, `max`, `min`, `truncate`, and `prettyPrint`.
+Standalone operations are accessed through namespace modules: `SemVer.*`
+(parsing, comparison, bumping, diffing, sorting), `Range.*` (matching,
+filtering, algebra), `Comparator.*` (parsing), and `PrettyPrint.*`
+(formatting). No layers needed.
 
 **Services** -- accessed through Effect's dependency injection. Use these when
 you need testability, multiple cache instances, or composition with other
@@ -97,16 +97,13 @@ Replace the parser with a test implementation:
 
 ```typescript
 import { Effect, Layer } from "effect";
-import type { SemVer } from "semver-effect";
-import { SemVerParser, SemVer as SemVerClass } from "semver-effect";
+import { SemVer, SemVerParser } from "semver-effect";
 
 const TestParserLive = Layer.succeed(
   SemVerParser,
   SemVerParser.of({
     parseVersion: (_input) =>
-      Effect.succeed(
-        new SemVerClass({ major: 1, minor: 0, patch: 0, prerelease: [], build: [] }),
-      ),
+      Effect.succeed(SemVer.make(1, 0, 0)),
     parseRange: (_input) => Effect.fail(/* ... */),
     parseComparator: (_input) => Effect.fail(/* ... */),
   }),
@@ -125,10 +122,10 @@ and provides querying, resolution, grouping, and navigation operations.
 ```typescript
 import { Effect } from "effect";
 import {
+  SemVer,
   SemVerParserLive,
   VersionCache,
   VersionCacheLive,
-  parseVersion,
 } from "semver-effect";
 
 const program = Effect.gen(function* () {
@@ -136,11 +133,11 @@ const program = Effect.gen(function* () {
 
   // Load versions into the cache
   const versions = yield* Effect.all([
-    parseVersion("1.0.0"),
-    parseVersion("1.1.0"),
-    parseVersion("1.2.0"),
-    parseVersion("2.0.0"),
-    parseVersion("2.1.0"),
+    SemVer.fromString("1.0.0"),
+    SemVer.fromString("1.1.0"),
+    SemVer.fromString("1.2.0"),
+    SemVer.fromString("2.0.0"),
+    SemVer.fromString("2.1.0"),
   ]);
   yield* cache.load(versions);
 
@@ -173,24 +170,24 @@ Find the highest version satisfying a range:
 ```typescript
 import { Effect } from "effect";
 import {
+  SemVer,
+  Range,
   VersionCache,
   VersionCacheLive,
   SemVerParserLive,
-  parseVersion,
-  parseRange,
 } from "semver-effect";
 
 const program = Effect.gen(function* () {
   const cache = yield* VersionCache;
 
   yield* cache.load([
-    yield* parseVersion("1.0.0"),
-    yield* parseVersion("1.5.0"),
-    yield* parseVersion("2.0.0"),
+    yield* SemVer.fromString("1.0.0"),
+    yield* SemVer.fromString("1.5.0"),
+    yield* SemVer.fromString("2.0.0"),
   ]);
 
   // Resolve with a parsed Range
-  const range = yield* parseRange("^1.0.0");
+  const range = yield* Range.fromString("^1.0.0");
   const resolved = yield* cache.resolve(range);
   console.log(resolved.toString()); // "1.5.0"
 
@@ -206,9 +203,9 @@ const program = Effect.gen(function* () {
 const program = Effect.gen(function* () {
   const cache = yield* VersionCache;
 
-  yield* cache.load([yield* parseVersion("1.0.0")]);
-  yield* cache.add(yield* parseVersion("1.1.0"));
-  yield* cache.remove(yield* parseVersion("1.0.0"));
+  yield* cache.load([yield* SemVer.fromString("1.0.0")]);
+  yield* cache.add(yield* SemVer.fromString("1.1.0"));
+  yield* cache.remove(yield* SemVer.fromString("1.0.0"));
 
   const all = yield* cache.versions;
   console.log(all.map(String)); // ["1.1.0"]
@@ -240,13 +237,13 @@ const program = Effect.gen(function* () {
 
 ```typescript
 import { Effect, Option } from "effect";
-import { VersionCache, parseVersion } from "semver-effect";
+import { SemVer, VersionCache } from "semver-effect";
 
 const program = Effect.gen(function* () {
   const cache = yield* VersionCache;
   // ... load versions [1.0.0, 1.1.0, 1.2.0, 2.0.0] ...
 
-  const v = yield* parseVersion("1.1.0");
+  const v = yield* SemVer.fromString("1.1.0");
 
   const next = yield* cache.next(v);
   console.log(Option.getOrNull(next)?.toString()); // "1.2.0"
@@ -256,8 +253,8 @@ const program = Effect.gen(function* () {
 
   // Diff between two cached versions
   const d = yield* cache.diff(
-    yield* parseVersion("1.0.0"),
-    yield* parseVersion("2.0.0"),
+    yield* SemVer.fromString("1.0.0"),
+    yield* SemVer.fromString("2.0.0"),
   );
   console.log(d.type); // "major"
 });
@@ -286,7 +283,6 @@ import {
   VersionCache,
   VersionCacheLive,
   SemVerParserLive,
-  parseVersion,
 } from "semver-effect";
 
 const NpmFetcherLive = Layer.succeed(
@@ -324,9 +320,9 @@ All errors are tagged, so you can catch them individually:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
-const program = parseVersion(userInput).pipe(
+const program = SemVer.fromString(userInput).pipe(
   Effect.catchTag("InvalidVersionError", (err) =>
     Effect.succeed(fallbackVersion),
   ),
@@ -337,12 +333,12 @@ const program = parseVersion(userInput).pipe(
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, parseRange, satisfies } from "semver-effect";
+import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* parseVersion(versionInput);
-  const r = yield* parseRange(rangeInput);
-  return satisfies(v, r);
+  const v = yield* SemVer.fromString(versionInput);
+  const r = yield* Range.fromString(rangeInput);
+  return Range.satisfies(v, r);
 }).pipe(
   Effect.catchTags({
     InvalidVersionError: (err) =>
@@ -357,10 +353,10 @@ const program = Effect.gen(function* () {
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const parseOrDefault = (input: string) =>
-  parseVersion(input).pipe(
+  SemVer.fromString(input).pipe(
     Effect.orElseSucceed(() => defaultVersion),
   );
 ```
