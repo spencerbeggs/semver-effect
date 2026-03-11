@@ -1,12 +1,14 @@
-import { Effect } from "effect";
+import { inspect } from "node:util";
+import { Effect, Option } from "effect";
 import { describe, expect, it } from "vitest";
 import { SemVerOrderWithBuild } from "../src/order.js";
 import { Comparator } from "../src/schemas/Comparator.js";
 import { Range } from "../src/schemas/Range.js";
 import { SemVer } from "../src/schemas/SemVer.js";
 import { equivalent, intersect, isSubset, simplify, union } from "../src/utils/algebra.js";
+import { bumpPrerelease } from "../src/utils/bump.js";
 import { parseRangeSet, parseSingleComparator, parseValidSemVer } from "../src/utils/grammar.js";
-import { satisfies } from "../src/utils/matching.js";
+import { minSatisfying, satisfies } from "../src/utils/matching.js";
 import { normalizeRange } from "../src/utils/normalize.js";
 
 const v = (
@@ -635,5 +637,132 @@ describe("matching branches", () => {
 		// >=1.0.0-alpha <1.0.1 — comparator has [1,0,0] tuple with prerelease
 		const parsed = r(">=1.0.0-alpha <1.0.1");
 		expect(satisfies(v(1, 0, 0, ["beta"]), parsed)).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 7. bump.ts — bumpPrerelease coverage
+// ---------------------------------------------------------------------------
+
+describe("bumpPrerelease coverage", () => {
+	it("id provided, no existing prerelease", () => {
+		const result = bumpPrerelease(v(1, 0, 0), "beta");
+		expect(result.toString()).toBe("1.0.1-beta.0");
+	});
+
+	it("existing numeric prerelease, no id → increment", () => {
+		const result = bumpPrerelease(v(1, 0, 0, [0]));
+		expect(result.toString()).toBe("1.0.0-1");
+	});
+
+	it("current prefix is numeric → null !== 'alpha' → reset", () => {
+		const result = bumpPrerelease(v(1, 0, 0, [0]), "alpha");
+		expect(result.toString()).toBe("1.0.0-alpha.0");
+	});
+
+	it("different string prefix → reset", () => {
+		const result = bumpPrerelease(v(1, 0, 0, ["alpha", 1]), "beta");
+		expect(result.toString()).toBe("1.0.0-beta.0");
+	});
+
+	it("same prefix → increment", () => {
+		const result = bumpPrerelease(v(1, 0, 0, ["alpha", 1]), "alpha");
+		expect(result.toString()).toBe("1.0.0-alpha.2");
+	});
+
+	it("last is string → append 0", () => {
+		const result = bumpPrerelease(v(1, 0, 0, ["alpha"]));
+		expect(result.toString()).toBe("1.0.0-alpha.0");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 8. algebra.ts — isComparatorImplied fallthrough branches
+// ---------------------------------------------------------------------------
+
+describe("algebra isComparatorImplied fallthrough", () => {
+	it("isSubset false when > not implied", () => {
+		const sub = range([comp("<=", v(1, 0, 0))]);
+		const sup = range([comp(">", v(2, 0, 0))]);
+		expect(isSubset(sub, sup)).toBe(false);
+	});
+
+	it("isSubset false when <= not implied", () => {
+		const sub = range([comp(">=", v(3, 0, 0))]);
+		const sup = range([comp("<=", v(1, 0, 0))]);
+		expect(isSubset(sub, sup)).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 9. desugar.ts — >*, >=*, and hyphen with * upper
+// ---------------------------------------------------------------------------
+
+describe("desugar additional branches", () => {
+	it(">* -> >=0.0.0", () => {
+		const parsed = r(">*");
+		expect(parsed.toString()).toBe(">=0.0.0");
+	});
+
+	it(">=* -> >=0.0.0", () => {
+		const parsed = r(">=*");
+		expect(parsed.toString()).toBe(">=0.0.0");
+	});
+
+	it("1.2.3 - * -> >=1.2.3", () => {
+		const parsed = r("1.2.3 - *");
+		expect(parsed.toString()).toBe(">=1.2.3");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 10. grammar.ts — parseSingleComparator error paths
+// ---------------------------------------------------------------------------
+
+describe("grammar parseSingleComparator error paths", () => {
+	it("parseSingleComparator rejects invalid patch", () => {
+		expect(() => Effect.runSync(parseSingleComparator("1.0.abc"))).toThrow();
+	});
+
+	it("parseSingleComparator rejects invalid prerelease", () => {
+		expect(() => Effect.runSync(parseSingleComparator("1.0.0-"))).toThrow();
+	});
+
+	it("parseSingleComparator rejects invalid build", () => {
+		expect(() => Effect.runSync(parseSingleComparator("1.0.0+"))).toThrow();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 11. inspect symbols — SemVer, Comparator, Range
+// ---------------------------------------------------------------------------
+
+describe("inspect symbols", () => {
+	it("SemVer inspect symbol", () => {
+		expect(inspect(v(1, 2, 3))).toBe("1.2.3");
+	});
+
+	it("Comparator inspect symbol", () => {
+		const c = comp(">=", v(1, 0, 0));
+		expect(inspect(c)).toBe(">=1.0.0");
+	});
+
+	it("Range inspect symbol", () => {
+		const rng = range([comp(">=", v(1, 0, 0))]);
+		expect(inspect(rng)).toBe(">=1.0.0");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 12. matching.ts — minSatisfying branch
+// ---------------------------------------------------------------------------
+
+describe("minSatisfying coverage", () => {
+	it("minSatisfying returns the lowest matching version", () => {
+		const versions = [v(1, 0, 0), v(2, 0, 0), v(3, 0, 0)];
+		const parsed = r(">=1.0.0");
+		const result = minSatisfying(versions, parsed);
+		expect(Option.isSome(result)).toBe(true);
+		expect(String(Option.getOrThrow(result))).toBe("1.0.0");
 	});
 });
