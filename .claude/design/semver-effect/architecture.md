@@ -1,11 +1,11 @@
 ---
-status: draft
+status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
 updated: 2026-03-10
-last-synced: never
-completeness: 35
+last-synced: 2026-03-10
+completeness: 95
 related:
   - data-model.md
   - parser.md
@@ -13,6 +13,8 @@ related:
   - operations.md
   - version-cache.md
   - testing.md
+  - semver-compliance.md
+  - node-semver-divergences.md
 dependencies: []
 ---
 
@@ -44,77 +46,104 @@ immutable Schema.TaggedClass instances.
 
 **Key Design Principles:**
 
-- Strict SemVer 2.0.0 grammar only -- no loose mode, no coercion, no v1 compat
-- Effect-native API: all operations return Effect with typed error channels
+- Strict SemVer 2.0.0 grammar only -- no loose mode, no coercion, no v-prefix tolerance
+- Effect-native API: all parsing operations return Effect with typed error channels
 - Rich error model via TaggedError with positional parse info
 - Immutable data types via Schema.TaggedClass with Equal, Order, Hash, Inspectable
 - Service-based architecture: SemVerParser and VersionCache as Effect services
+- Pure utility functions for comparison, matching, bumping, and diffing
 
 **When to reference this document:**
 
-- When implementing core data types (SemVer, Range, Comparator)
-- When building the recursive descent parser
-- When designing the VersionCache service
-- When adding new range algebra operations
+- When understanding the overall module structure and dependency graph
+- When reasoning about the service pattern (interface + GenericTag + Layer)
+- When deciding where new functionality should live
+- When understanding the build pipeline and export surface
 
 ---
 
 ## Current State
 
-### System Components
+### Implementation Status
 
-The project is in early implementation. The design spec is approved and the
-package structure is scaffolded, but core modules have not yet been implemented.
+The implementation is **complete**. All core modules are implemented, tested,
+and working. The package has 476 tests across 19 test files with high branch
+coverage.
 
 #### Component 1: Core Data Types (schemas/)
 
 **Location:** `src/schemas/SemVer.ts`, `src/schemas/Range.ts`,
 `src/schemas/Comparator.ts`, `src/schemas/VersionDiff.ts`
 
-**Purpose:** Immutable, Effect-native representations of SemVer concepts.
+**Status:** Implemented and tested.
 
 **Responsibilities:**
 
-- SemVer: major/minor/patch/prerelease/build with Equal, Order, Hash
-- Comparator: operator + version pairing
-- ComparatorSet: implicit AND of Comparators
-- Range: implicit OR of ComparatorSets with desugaring
-- VersionDiff: structured diff between two versions
+- SemVer: major/minor/patch/prerelease/build with custom Equal, Order, Hash,
+  Inspectable (toString, toJSON, nodejs.util.inspect.custom)
+- Comparator: operator + version pairing with toString
+- ComparatorSet: type alias for `ReadonlyArray<Comparator>` (not a class)
+- Range: OR of ComparatorSets with toString
+- VersionDiff: structured diff between two versions with type classification
 
-#### Component 2: Parser (services/ + layers/)
+#### Component 2: Parser (services/ + layers/ + utils/)
 
 **Location:** `src/services/SemVerParser.ts` (interface + tag),
 `src/layers/SemVerParserLive.ts` (implementation),
-`src/utils/grammar.ts`, `src/utils/desugar.ts`, `src/utils/normalize.ts`
+`src/utils/grammar.ts` (recursive descent parser),
+`src/utils/desugar.ts` (range desugaring),
+`src/utils/normalize.ts` (range normalization),
+`src/utils/parseRange.ts` (convenience wrapper)
 
-**Purpose:** Recursive descent parser for SemVer 2.0.0 BNF grammar.
+**Status:** Implemented and tested.
 
 **Responsibilities:**
 
-- parseVersion: string to SemVer with precise error positions
-- parseRange: string to Range with desugaring of syntactic sugar
-- parseComparator: string to Comparator
-- No regex -- character-by-character walk of the grammar
+- parseVersion (exported as `parseVersion`): string to SemVer with precise error positions
+- parseRange: string to Range with desugaring and normalization
+- parseComparator (exported as `parseComparator`): string to Comparator
+- Hand-written recursive descent PEG parser, character-by-character walk
+- All syntactic sugar desugared during parsing
 
-#### Component 3: VersionCache (services/ + layers/)
+#### Component 3: Operations (utils/)
+
+**Location:** `src/utils/compare.ts`, `src/utils/matching.ts`,
+`src/utils/algebra.ts`, `src/utils/diff.ts`, `src/utils/bump.ts`,
+`src/utils/order.ts`, `src/utils/prettyPrint.ts`
+
+**Status:** Implemented and tested.
+
+**Responsibilities:**
+
+- Comparison: compare, equal, gt, gte, lt, lte, neq, sort, rsort, max, min
+- Matching: satisfies, filter, maxSatisfying, minSatisfying
+- Algebra: intersect, union, simplify, isSubset, equivalent
+- Diffing: diff (produces VersionDiff)
+- Bumping: bumpMajor, bumpMinor, bumpPatch, bumpPrerelease, bumpRelease
+- Ordering: SemVerOrder, SemVerOrderWithBuild
+- Pretty-printing: prettyPrint via Match.exhaustive
+
+#### Component 4: VersionCache (services/ + layers/)
 
 **Location:** `src/services/VersionCache.ts` (interface + tag),
 `src/layers/VersionCacheLive.ts` (implementation)
 
-**Purpose:** Queryable cache of known versions backed by `Ref<SortedSet<SemVer>>`.
+**Status:** Implemented and tested.
 
 **Responsibilities:**
 
-- Load, add, remove versions
-- Resolve ranges against cached versions
-- Group, filter, diff, navigate version sets
-- Multiple caches coexist via Effect service model
+- Load, add, remove versions (infallible mutation)
+- Query: versions, latest, oldest
+- Resolution: resolve, resolveString, filter
+- Grouping: groupBy, latestByMajor, latestByMinor
+- Navigation: diff, next, prev
+- Backed by `Ref<SortedSet<SemVer>>`
 
-#### Component 4: Error Model (errors/)
+#### Component 5: Error Model (errors/)
 
 **Location:** `src/errors/` (one file per error class)
 
-**Purpose:** Rich typed errors extending TaggedError.
+**Status:** Implemented and tested. 10 error classes total.
 
 **Responsibilities:**
 
@@ -123,6 +152,18 @@ package structure is scaffolded, but core modules have not yet been implemented.
 - Resolution errors: UnsatisfiedRangeError, VersionNotFoundError,
   EmptyCacheError
 - Constraint errors: UnsatisfiableConstraintError, InvalidBumpError
+- Fetch errors: VersionFetchError
+
+#### Component 6: VersionFetcher (services/)
+
+**Location:** `src/services/VersionFetcher.ts` (interface + tag only)
+
+**Status:** Interface defined. No concrete implementation provided (by design).
+
+**Responsibilities:**
+
+- Abstract interface for fetching versions from external sources
+- Consumers provide their own Layer implementations
 
 ### Architecture Diagram
 
@@ -134,22 +175,26 @@ package structure is scaffolded, but core modules have not yet been implemented.
    schemas/       services/       layers/       errors/
    SemVer.ts      SemVerParser.ts SemVerParser  InvalidVersionError.ts
    Range.ts       VersionCache.ts  Live.ts      InvalidRangeError.ts
-   Comparator.ts  (interface +    VersionCache  ...etc (one per error)
-   VersionDiff.ts  GenericTag)      Live.ts
-       |                              |
-       |                          utils/
-       |                          grammar.ts
-       |                          desugar.ts
-       |                          normalize.ts
+   Comparator.ts  VersionFetcher  VersionCache  InvalidComparatorError.ts
+   VersionDiff.ts  (interface +    Live.ts      InvalidPrereleaseError.ts
+       |            GenericTag)                  UnsatisfiedRangeError.ts
+       |                |                       VersionNotFoundError.ts
+       |            utils/                      EmptyCacheError.ts
+       |            grammar.ts                  UnsatisfiableConstraintError.ts
+       |            desugar.ts                  InvalidBumpError.ts
+       |            normalize.ts                VersionFetchError.ts
+       |            compare.ts
+       |            matching.ts
+       |            algebra.ts
+       |            diff.ts
+       |            bump.ts
+       |            order.ts
+       |            parseRange.ts
+       |            prettyPrint.ts
        |
   Schema.TaggedClass
-  Equal + Order + Hash
+  Equal + Order + Hash + Inspectable
 ```
-
-### Current Limitations
-
-- Project is in scaffolding stage; core modules are not yet implemented
-- Source currently contains placeholder code from the template
 
 ---
 
@@ -196,20 +241,25 @@ package structure is scaffolded, but core modules have not yet been implemented.
 **Options considered:**
 
 1. **Schema.TaggedClass (Chosen):**
-   - Pros: Built-in Equal/Hash, serialization, pattern matching via _tag
+   - Pros: Built-in serialization, pattern matching via _tag
    - Cons: Effect dependency for data types
    - Why chosen: Integrates naturally with Effect ecosystem
 
 2. **Plain interfaces + custom Equal:**
    - Pros: Lighter weight
    - Cons: Manual Equal/Hash/serialization
-   - Why rejected: Schema.TaggedClass provides all needed traits for free
+   - Why rejected: Schema.TaggedClass provides needed traits
+
+**Implementation note:** Custom Equal and Hash overrides are mandatory on
+SemVer because the default Data.Class equality does shallow reference
+comparison on arrays, and build metadata must be excluded from both
+equality and hashing per the SemVer spec.
 
 ### Design Patterns Used
 
 #### Pattern 1: Interface + GenericTag Service Pattern
 
-- **Where used:** SemVerParser, VersionCache
+- **Where used:** SemVerParser, VersionCache, VersionFetcher
 - **Why used:** Dependency injection, testability, multiple instances
 - **Implementation:** Interface + `Context.GenericTag` in `services/`, Layer in
   `layers/`. GenericTag avoids un-nameable `_base` types that break
@@ -217,7 +267,7 @@ package structure is scaffolded, but core modules have not yet been implemented.
 
 #### Pattern 2: Split Base for TaggedError
 
-- **Where used:** All error types in `errors/` (one file per error)
+- **Where used:** All 10 error types in `errors/` (one file per error)
 - **Why used:** Typed error channels, pattern matching, rich context
 - **Implementation:** Each error file exports a named `*Base` constant
   (`Data.TaggedError(...)`) and a class extending it. The split base gives
@@ -232,6 +282,21 @@ package structure is scaffolded, but core modules have not yet been implemented.
   import directly from source paths. No `schemas/index.ts`, no
   `errors/index.ts`.
 
+#### Pattern 4: Dual API (data-first + data-last)
+
+- **Where used:** All binary pure operations (compare, satisfies, filter, etc.)
+- **Why used:** Effect ecosystem convention, pipe ergonomics
+- **Implementation:** Uses `Function.dual(2, ...)` for all binary operations.
+  Enables both `satisfies(version, range)` and `pipe(version, satisfies(range))`.
+
+#### Pattern 5: disableValidation for Trusted Internals
+
+- **Where used:** Parser output, bump operations, desugar, normalize
+- **Why used:** Avoids double validation on hot paths
+- **Implementation:** `new SemVer({...}, { disableValidation: true })` when
+  constructing from already-validated data inside the parser and internal
+  utility functions.
+
 ---
 
 ## System Architecture
@@ -244,7 +309,7 @@ src/
 ├── schemas/
 │   ├── SemVer.ts
 │   ├── Comparator.ts
-│   ├── Range.ts
+│   ├── Range.ts              (also exports ComparatorSet type alias)
 │   └── VersionDiff.ts
 ├── errors/
 │   ├── InvalidVersionError.ts
@@ -255,27 +320,48 @@ src/
 │   ├── VersionNotFoundError.ts
 │   ├── EmptyCacheError.ts
 │   ├── UnsatisfiableConstraintError.ts
-│   └── InvalidBumpError.ts
+│   ├── InvalidBumpError.ts
+│   └── VersionFetchError.ts
 ├── services/
 │   ├── SemVerParser.ts       (interface + GenericTag)
-│   └── VersionCache.ts       (interface + GenericTag)
+│   ├── VersionCache.ts       (interface + GenericTag)
+│   └── VersionFetcher.ts     (interface + GenericTag)
 ├── layers/
 │   ├── SemVerParserLive.ts
 │   └── VersionCacheLive.ts
-├── utils/
-│   ├── grammar.ts            (BNF grammar rules)
-│   ├── desugar.ts            (range sugar -> primitive comparators)
-│   ├── normalize.ts          (range normalization)
-│   ├── compare.ts            (pure comparison functions)
-│   └── matching.ts           (range matching logic)
-__test__/                            (adjacent to src/, not inside it)
+└── utils/
+    ├── grammar.ts            (recursive descent parser)
+    ├── desugar.ts            (range sugar -> primitive comparators)
+    ├── normalize.ts          (range normalization)
+    ├── parseRange.ts         (convenience parseRange wrapper)
+    ├── compare.ts            (comparison helpers using dual)
+    ├── matching.ts           (range matching logic)
+    ├── algebra.ts            (intersect, union, simplify, isSubset, equivalent)
+    ├── diff.ts               (structured version diffing)
+    ├── bump.ts               (version bump operations)
+    ├── order.ts              (SemVerOrder, SemVerOrderWithBuild)
+    └── prettyPrint.ts        (Match.exhaustive pretty printer)
+__test__/                     (adjacent to src/, not inside it)
+├── fixtures/
+│   ├── versions.ts
+│   ├── ranges.ts
+│   └── increments.ts
 ├── SemVer.test.ts
-├── Range.test.ts
-├── Parser.test.ts
+├── schemas.test.ts
+├── parseVersion.test.ts
+├── parseRange.test.ts
+├── SemVerParser.test.ts
 ├── VersionCache.test.ts
-├── order.test.ts
 ├── errors.test.ts
-└── utils/                           (shared test helpers)
+├── order.test.ts
+├── compare.test.ts
+├── matching.test.ts
+├── algebra.test.ts
+├── diff.test.ts
+├── bump.test.ts
+├── prettyPrint.test.ts
+├── coverage.test.ts
+└── spec-compliance.test.ts
 ```
 
 **Conventions:**
@@ -288,8 +374,8 @@ __test__/                            (adjacent to src/, not inside it)
 - **`services/`** -- Service interfaces + GenericTag (no implementation)
 - **`layers/`** -- Layer implementations (the "Live" variants)
 - **`utils/`** -- Pure helper functions and internal logic
-- **Tests** live in `__test__/` (top-level, adjacent to `src/`); helpers in
-  `__test__/utils/`
+- **Tests** live in `__test__/` (top-level, adjacent to `src/`); fixtures in
+  `__test__/fixtures/`
 
 ### Error Handling Strategy
 
@@ -298,6 +384,7 @@ All errors extend TaggedError and flow through Effect's typed error channel:
 - Parser errors include input string and optional position
 - Resolution errors include the range/version that failed
 - Constraint errors include the conflicting constraints
+- All errors derive their `message` via a getter from structured fields
 - Users handle errors via Effect.catchTag or Effect.match
 
 ---
@@ -310,14 +397,18 @@ All errors extend TaggedError and flow through Effect's typed error channel:
 String input
      |
      v
-SemVerParser.parseVersion() / parseRange()
-     |
+parseVersion() / parseRange() / parseComparator()
+     |  (convenience functions delegating to grammar.ts)
      v
-internal/grammar.ts (recursive descent, char by char)
+grammar.ts (recursive descent, char by char)
      |
-     +---> Success: SemVer / Range
+     +---> desugar.ts (for range sugar: tilde, caret, x-range, hyphen)
      |
-     +---> Failure: InvalidVersionError / InvalidRangeError
+     +---> normalize.ts (sort comparators, remove duplicates)
+     |
+     +---> Success: SemVer / Range / Comparator
+     |
+     +---> Failure: InvalidVersionError / InvalidRangeError / InvalidComparatorError
                     (with position info)
 ```
 
@@ -327,13 +418,13 @@ internal/grammar.ts (recursive descent, char by char)
 Range + VersionCache
      |
      v
-VersionCache.resolve(range)
+VersionCache.resolve(range) or VersionCache.resolveString(input)
      |
      v
 Read Ref<SortedSet<SemVer>>
      |
      v
-Filter versions matching range
+Iterate from highest version, test satisfies(v, range)
      |
      +---> Found: highest matching SemVer
      |
@@ -343,9 +434,9 @@ Filter versions matching range
 ### Range Desugaring
 
 ```text
-"^1.2.3"  -->  >=1.2.3 <2.0.0
-"~1.2.3"  -->  >=1.2.3 <1.3.0
-"1.2.x"   -->  >=1.2.0 <1.3.0
+"^1.2.3"  -->  >=1.2.3 <2.0.0-0
+"~1.2.3"  -->  >=1.2.3 <1.3.0-0
+"1.2.x"   -->  >=1.2.0 <1.3.0-0
 "1.2.3 - 2.0.0"  -->  >=1.2.3 <=2.0.0
 ```
 
@@ -360,65 +451,63 @@ during parsing, before any matching occurs.
 
 - **Effect.Schema:** Data types use Schema.TaggedClass for serialization
 - **Effect.Order:** SemVer exposes Order instance for Array.sort, SortedSet
-- **Effect.Equal/Hash:** SemVer implements Equal (ignoring build metadata per
-  spec) and derived Hash
-- **Effect.Inspectable:** SemVer formats as spec-compliant string
+- **Effect.Equal/Hash:** SemVer implements custom Equal (ignoring build metadata
+  per spec) and Hash (excluding build from hash computation)
+- **Inspectable:** SemVer implements toString, toJSON, and nodejs.util.inspect.custom
+- **Effect.Match:** prettyPrint uses Match.exhaustive for type-safe printing
+- **Function.dual:** All binary pure operations support data-first and data-last
 
 ### Build System
 
 - ESM-only, ES2022 target
-- `effect` as peer dependency
+- `effect` as peer dependency (^3.19.19)
 - Built with Rslib via the monorepo build pipeline
+- Dual output: `dist/dev/` (development) and `dist/npm/` (production)
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests
+### Test Suite
 
 **Location:** `__test__/` (top-level, adjacent to `src/`)
 
-**Test files planned:**
+**Framework:** Vitest with v8 coverage, forks pool for Effect-TS compatibility.
 
-- `SemVer.test.ts` -- construction, equality, ordering, bumping
-- `Range.test.ts` -- parsing, matching, algebra
-- `Parser.test.ts` -- grammar edge cases, error positions
-- `VersionCache.test.ts` -- service operations, resolution
-- `order.test.ts` -- Order instance, sorting
-- `errors.test.ts` -- error construction, fields, messages
+**Scale:** 476 tests across 19 test files (~3920 lines of test code).
 
-**Coverage target:** High coverage with emphasis on parser edge cases and
-spec compliance.
+**Test files:**
 
-**What to test:**
+- `SemVer.test.ts` -- construction, equality, ordering, bumping, traits
+- `schemas.test.ts` -- schema validation, serialization
+- `parseVersion.test.ts` -- version parsing edge cases
+- `parseRange.test.ts` -- range parsing, desugaring
+- `SemVerParser.test.ts` -- service layer parsing via Layer
+- `VersionCache.test.ts` -- service operations, resolution, concurrency
+- `errors.test.ts` -- error construction, fields, messages, pattern matching
+- `order.test.ts` -- SemVerOrder, SemVerOrderWithBuild
+- `compare.test.ts` -- comparison helpers, dual API
+- `matching.test.ts` -- satisfies, filter, maxSatisfying, minSatisfying
+- `algebra.test.ts` -- intersect, union, simplify, isSubset, equivalent
+- `diff.test.ts` -- VersionDiff classification and deltas
+- `bump.test.ts` -- bump operations
+- `prettyPrint.test.ts` -- Match.exhaustive pretty printing
+- `coverage.test.ts` -- comprehensive edge case coverage
+- `spec-compliance.test.ts` -- SemVer 2.0.0 specification compliance
 
-- Full SemVer 2.0.0 spec compliance
-- All range syntactic sugar desugaring
-- Error position accuracy
-- VersionCache concurrency behavior
+**Fixtures:** `__test__/fixtures/` contains ported node-semver strict-mode test
+vectors for versions, ranges, and increments.
 
 ---
 
 ## Future Enhancements
 
-### Phase 1: Core Implementation
+### Potential Additions
 
-- Implement all data types (SemVer, Range, Comparator, VersionDiff)
-- Build recursive descent parser
-- Implement VersionCache service
-- Complete error model
-
-### Phase 2: Range Algebra
-
-- Range.intersect, Range.union, Range.simplify
-- Range.isSubset, Range.equivalent
-- Constraint solving across multiple ranges
-
-### Phase 3: Superset Features
-
-- Structured diffs (VersionDiff with deltas)
-- VersionCache grouping and navigation (groupBy, latestByMajor, next, prev)
 - Sync/non-Effect wrapper API (if demand exists)
+- Additional range algebra optimizations
+- Performance benchmarking against node-semver
+- Additional VersionFetcher implementations (npm, GitHub)
 
 ---
 
@@ -440,9 +529,6 @@ spec compliance.
 
 ---
 
-**Document Status:** Draft -- covers architectural decisions and component
-structure based on the approved design spec. Will be updated as implementation
-progresses.
-
-**Next Steps:** Update Current State section as core modules are implemented.
-Add performance design doc when parser optimization begins.
+**Document Status:** Current -- reflects the complete implemented architecture.
+All components are implemented, tested, and working with 476 tests across 19
+test files.

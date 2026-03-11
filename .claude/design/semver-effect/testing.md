@@ -1,11 +1,11 @@
 ---
-status: draft
+status: current
 module: semver-effect
 category: testing
 created: 2026-03-10
 updated: 2026-03-10
-last-synced: never
-completeness: 55
+last-synced: 2026-03-10
+completeness: 95
 related:
   - architecture.md
   - data-model.md
@@ -28,7 +28,7 @@ recursive descent parser and VersionCache service.
 2. [Current State](#current-state)
 3. [Rationale](#rationale)
 4. [Test Architecture](#test-architecture)
-5. [Test Fixtures and Vectors](#test-fixtures-and-vectors)
+5. [Test Fixtures](#test-fixtures)
 6. [Test Categories](#test-categories)
 7. [Coverage Strategy](#coverage-strategy)
 8. [Effect Testing Patterns](#effect-testing-patterns)
@@ -56,19 +56,12 @@ state.
 - Coverage targets emphasize branch coverage in parser code paths
 - Tests run with Vitest forks pool for Effect-TS compatibility
 
-**When to reference this document:**
-
-- When writing new test files for any semver-effect module
-- When adding parser test cases for grammar edge cases
-- When testing Effect services with layers and Ref-based state
-- When reviewing coverage reports and identifying gaps
-
 ---
 
 ## Current State
 
-The project is in early implementation. The test infrastructure is configured
-but no test files have been written yet.
+The test suite is fully implemented with 650 tests across 16 test files and
+3920 lines of test code. All tests pass.
 
 ### Test Framework Configuration
 
@@ -82,26 +75,40 @@ reliably in worker threads.
 `@savvy-web/vitest` configuration package. Projects are defined per-workspace
 and coverage uses the v8 provider.
 
-### Planned Test Files
+### Test File Inventory
 
-Test files reside in `__test__/` with optional test helpers in
-`__test__/utils/`. Tests can also be co-located with their source files.
+| File | Tests | Lines | Module Under Test |
+| :--- | :--- | :--- | :--- |
+| `spec-compliance.test.ts` | 166 | 71 | Spec vectors via fixtures |
+| `coverage.test.ts` | 111 | 768 | Cross-module edge cases |
+| `errors.test.ts` | 63 | 406 | All 10 error classes |
+| `compare.test.ts` | 48 | 278 | Comparison + collection ops |
+| `schemas.test.ts` | 42 | 408 | SemVer, Comparator, Range, VersionDiff |
+| `parseRange.test.ts` | 36 | 239 | Range parsing + desugaring |
+| `VersionCache.test.ts` | 34 | 424 | Cache service lifecycle |
+| `parseVersion.test.ts` | 34 | 207 | Version parsing + rejection |
+| `matching.test.ts` | 19 | 129 | Range satisfaction |
+| `order.test.ts` | 18 | 119 | SemVerOrder + SemVerOrderWithBuild |
+| `algebra.test.ts` | 16 | 148 | Union, intersect, subset, etc. |
+| `SemVerParser.test.ts` | 12 | 114 | Parser service via Layer |
+| `diff.test.ts` | 10 | 86 | Version diffing |
+| `bump.test.ts` | 7+ | 107 | Bump operations |
+| `prettyPrint.test.ts` | 7 | 77 | Match.exhaustive printer |
+| `SemVer.test.ts` | 27+ | 339 | SemVer construction + traits |
+| **Total** | **650** | **3920** | |
 
-| File | Module Under Test | Focus |
-| :--- | :--- | :--- |
-| `SemVer.test.ts` | `src/schemas/SemVer.ts` | Construction, equality, ordering, bumping |
-| `Range.test.ts` | `src/schemas/Range.ts` | Parsing, matching, algebra |
-| `Comparator.test.ts` | `src/schemas/Comparator.ts` | Operator matching |
-| `VersionDiff.test.ts` | `src/schemas/VersionDiff.ts` | Diff operations |
-| `SemVerParser.test.ts` | `src/services/SemVerParser.ts` | Grammar edge cases, error positions |
-| `VersionCache.test.ts` | `src/services/VersionCache.ts` | Service operations, resolution |
-| `errors.test.ts` | `src/errors/*.ts` | Error construction, fields, messages |
+### Fixture Files
 
-### Current Limitations
+Three fixture files in `__test__/fixtures/` provide structured test vectors:
 
-- No test files exist yet; implementation has not started
-- Coverage thresholds have not been configured at the package level
-- Integration tests for cross-module interactions are not yet planned
+| File | Contents |
+| :--- | :--- |
+| `versions.ts` | `validVersions`, `invalidVersions`, `comparisonPairs` arrays |
+| `ranges.ts` | `rangeTests` array with range-satisfaction test cases |
+| `increments.ts` | `incrementTests` array with bump operation vectors |
+
+Fixtures are derived from node-semver's test suite, filtered to strict-mode
+entries only (all loose-mode entries such as v-prefixed versions are excluded).
 
 ---
 
@@ -121,20 +128,16 @@ with full async hook support, matching how Effect runs in production.
 **Trade-off:** Fork pool is slower than threads pool due to process startup
 overhead. This is acceptable because semver-effect tests are fast unit tests
 with no I/O, so the per-process overhead is negligible relative to total
-suite time.
+suite time (692ms total duration).
 
 ### Why Structural Error Assertions
 
 **Context:** All errors extend TaggedError with domain-specific fields
 (input, position, range, version). Tests need to verify error content.
 
-**Decision:** Assert error structure via `Effect.exit` + `Exit.match` rather
-than catching error messages with string matching. This ensures:
-
-- Type safety: the compiler verifies the error type matches
-- Field coverage: every error field (position, input, available) is checked
-- Refactor safety: renaming an error message does not break tests; changing
-  an error field does
+**Decision:** Assert error structure via `Effect.either` or `Effect.exit` +
+`Exit.match` rather than catching error messages with string matching. This
+ensures type safety, field coverage, and refactor safety.
 
 ### Why Isolated Test Layers
 
@@ -145,6 +148,20 @@ share a single Ref instance can interfere with each other.
 instance. No test reads or writes state created by another test. This
 eliminates ordering dependencies and makes tests parallelizable within a file.
 
+### Why Two Spec Compliance Approaches
+
+The test suite uses two complementary approaches:
+
+1. **`spec-compliance.test.ts`** -- Data-driven tests using `it.each` with
+   fixture arrays. Covers valid versions, invalid versions, comparison pairs,
+   range satisfaction, and bump operations. High coverage breadth with minimal
+   code.
+
+2. **`coverage.test.ts`** -- Targeted tests for edge cases, cross-module
+   interactions, and code paths not covered by fixtures. Focuses on depth:
+   schema construction, algebra edge cases, VersionCache navigation, and
+   prettyPrint exhaustiveness.
+
 ---
 
 ## Test Architecture
@@ -152,160 +169,78 @@ eliminates ordering dependencies and makes tests parallelizable within a file.
 ### Directory Layout
 
 ```text
-src/
-  schemas/
-    SemVer.ts              -- version data type (Schema-based)
-    Comparator.ts          -- comparator data type
-    Range.ts               -- range data type
-    VersionDiff.ts         -- version diff data type
-  errors/
-    {ErrorName}.ts         -- one error class per file
-  services/
-    SemVerParser.ts        -- parser service interface + GenericTag
-    VersionCache.ts        -- cache service interface + GenericTag
-  layers/
-    SemVerParserLive.ts    -- parser service implementation
-    VersionCacheLive.ts    -- cache service implementation
-  utils/
-    grammar.ts             -- recursive descent grammar rules
-    desugar.ts             -- range desugaring logic
-    normalize.ts           -- normalization helpers
-    compare.ts             -- comparison utilities
-    matching.ts            -- range matching utilities
-__test__/                    (adjacent to src/, not inside it)
-  utils/                   -- shared test helpers
-  SemVer.test.ts           -- data type construction and traits
-  Range.test.ts            -- range parsing, matching, algebra
-  Comparator.test.ts       -- comparator operator matching
-  VersionDiff.test.ts      -- diff operations
-  SemVerParser.test.ts     -- grammar coverage, error positions
-  VersionCache.test.ts     -- service lifecycle, resolution, concurrency
-  errors.test.ts           -- error construction and field verification
+__test__/
+  fixtures/
+    versions.ts              -- valid/invalid version vectors, comparison pairs
+    ranges.ts                -- range satisfaction test cases
+    increments.ts            -- bump operation test vectors
+  algebra.test.ts            -- range algebra (union, intersect, subset, etc.)
+  bump.test.ts               -- version bump operations
+  compare.test.ts            -- comparison helpers and collection operations
+  coverage.test.ts           -- cross-module edge cases and deep coverage
+  diff.test.ts               -- version diffing
+  errors.test.ts             -- all 10 error class construction + fields
+  matching.test.ts           -- range satisfaction logic
+  order.test.ts              -- SemVerOrder and SemVerOrderWithBuild
+  parseRange.test.ts         -- range parsing and desugaring
+  parseVersion.test.ts       -- version parsing and rejection
+  prettyPrint.test.ts        -- Match.exhaustive printer
+  schemas.test.ts            -- Schema.TaggedClass construction + traits
+  SemVer.test.ts             -- SemVer data type (Equal, Hash, toString, toJSON)
+  SemVerParser.test.ts       -- parser service via Layer composition
+  spec-compliance.test.ts    -- data-driven spec compliance via fixtures
+  VersionCache.test.ts       -- cache service lifecycle and operations
 ```
 
-### Test File Structure
+### Test File Organization
 
-Each test file follows a consistent structure:
+Each test file maps to a specific source module or concern:
 
-```typescript
-import { describe, it, expect } from "vitest"
-import { Effect, Exit, Layer, Ref } from "effect"
-// Module imports...
-
-describe("ModuleName", () => {
-  describe("feature group", () => {
-    it("should behave correctly for valid input", () =>
-      Effect.gen(function* () {
-        // Arrange
-        // Act
-        // Assert with expect()
-      }).pipe(Effect.provide(TestLayer), Effect.runPromise))
-
-    it("should produce typed error for invalid input", () =>
-      Effect.gen(function* () {
-        const exit = yield* Effect.exit(operationThatFails)
-        Exit.match(exit, {
-          onSuccess: () => expect.unreachable(),
-          onFailure: (cause) => {
-            // Assert error type and fields
-          },
-        })
-      }).pipe(Effect.provide(TestLayer), Effect.runPromise))
-  })
-})
-```
-
-### Test Helpers
-
-Shared test utilities live in `__test__/utils/` or alongside test files:
-
-- **Test layers:** Pre-configured Layer instances for SemVerParser and
-  VersionCache with known state
-- **Version fixtures:** Common SemVer instances (e.g., `v1_0_0`, `v2_0_0_rc1`)
-  used across multiple test files
-- **Assertion helpers:** Wrappers for common Effect exit pattern matching
+- **Schema tests** (`schemas.test.ts`, `SemVer.test.ts`): Construction,
+  `disableValidation`, traits (Equal, Hash, Inspectable), toString/toJSON
+- **Parser tests** (`parseVersion.test.ts`, `parseRange.test.ts`,
+  `SemVerParser.test.ts`): Grammar correctness, error positions, desugaring
+- **Operation tests** (`compare.test.ts`, `matching.test.ts`, `algebra.test.ts`,
+  `bump.test.ts`, `diff.test.ts`, `order.test.ts`, `prettyPrint.test.ts`):
+  Pure functions and effectful operations
+- **Service tests** (`VersionCache.test.ts`): Layer-based service testing
+- **Error tests** (`errors.test.ts`): All 10 error classes with field and
+  message verification
+- **Spec tests** (`spec-compliance.test.ts`): Fixture-driven compliance suite
+- **Coverage tests** (`coverage.test.ts`): Gap-filling edge cases
 
 ---
 
-## Test Fixtures and Vectors
+## Test Fixtures
 
-### Ported node-semver Strict-Mode Fixtures
+### Fixture Design
 
-We port fixture data from node-semver's test suite, filtering to strict-mode
-entries only (skipping all loose-mode entries such as v-prefixed versions).
-These fixtures provide battle-tested coverage from the most widely used semver
-implementation.
+Fixture data is stored as typed TypeScript arrays in `__test__/fixtures/`.
+This approach provides type checking on fixture data, IDE autocomplete for
+fixture fields, and easy `it.each` integration with Vitest.
 
-**Fixture files to port:**
+### versions.ts
 
-| node-semver File | Entries | Notes |
-| :--- | :--- | :--- |
-| `valid-versions.js` | 23 entries | All strict-compatible; port all |
-| `comparisons.js` | 20 of 32 entries | Skip 12 entries with v-prefix |
-| `range-include.js` | ~110 entries | Filter to strict-mode only |
-| `range-exclude.js` | ~50 entries | Filter to strict-mode only |
-| `increments.js` | ~120 entries | All increment/bump test vectors |
-| `diff.js` | All entries | Diff type classifications (major, minor, patch, prerelease, etc.) |
+Contains three exports:
 
-**Skipped fixtures:** The `equality.js` fixture is almost entirely loose-mode
-(35 of 37 entries use v-prefix or other loose syntax). Skip most of it and
-write our own strict equality tests instead.
+- `validVersions: ReadonlyArray<string>` -- 30+ valid SemVer strings including
+  spec examples and tricky-but-valid edge cases (`1.0.0--`, `1.0.0-0alpha`,
+  `1.0.0+001`, `1.0.0-0-0`)
+- `invalidVersions: ReadonlyArray<string>` -- Invalid version strings covering
+  leading zeros, empty identifiers, invalid characters, v-prefix, missing
+  components
+- `comparisonPairs` -- Ordered pairs for precedence verification
 
-### SemVer 2.0.0 Spec Test Vectors
+### ranges.ts
 
-We must include ALL test vectors derivable from the SemVer 2.0.0 specification.
-These are the canonical correctness tests.
+Contains `rangeTests` -- range satisfaction test cases ported from node-semver,
+filtered to strict-mode only. Each entry specifies a range string, a version
+string, and the expected satisfaction result.
 
-- **9 valid version strings** from spec examples (sections 2, 9, 10)
-- **28 ordered-pair precedence tests** from Section 11 (every example pair
-  in the spec's precedence rules)
-- **4 build-metadata equality pairs** (versions differing only in build
-  metadata must compare as equal)
-- **20+ invalid version strings** (leading zeros, empty identifiers, missing
-  components, non-numeric characters, etc.)
-- **15 tricky-but-valid strings** that push parser edge cases:
-  `1.0.0--`, `1.0.0-0alpha`, `1.0.0+001`, `1.0.0-0.0.0`, `1.0.0-alpha.-1`
-  (these are syntactically valid per the BNF but commonly mishandled)
+### increments.ts
 
-### Coverage Gaps Beyond node-semver
-
-node-semver's invalid version fixture has only ~10 entries. This is
-insufficient for a strict parser. We must fill the following gaps with our own
-test vectors:
-
-**Leading zeros (all positions):**
-
-- Major: `01.0.0`, `00.0.0`
-- Minor: `1.01.0`, `1.00.0`
-- Patch: `1.0.01`, `1.0.00` (note: `0.0.0` is valid, `00.0.0` is not)
-- Numeric prerelease: `1.0.0-01`, `1.0.0-alpha.01`
-
-**Empty identifiers:**
-
-- Trailing dot in prerelease: `1.0.0-alpha.`
-- Double dots: `1.0.0-alpha..beta`
-- Empty after hyphen: `1.0.0-`
-- Empty after plus: `1.0.0+`
-- Empty between dots in build: `1.0.0+build..meta`
-
-**Invalid characters:**
-
-- Underscore: `1.0.0-alpha_1`
-- Unicode: `1.0.0-\u00e9`
-- Spaces: `1.0.0 -alpha`, `1 .0.0`
-- Special characters: `1.0.0-alpha@1`, `1.0.0-alpha!`
-
-**Structural invalidity:**
-
-- Negative numbers: `-1.0.0`
-- Missing components: `1`, `1.0`, `1.0.0.0` (too few or too many)
-- v-prefix rejection: `v1.0.0` (strict mode must reject)
-- Integer overflow: components beyond `Number.MAX_SAFE_INTEGER`
-
-**Error position tests (our differentiator):** node-semver has ZERO error
-position tests. Every invalid input above must assert the exact character
-position where the parser detected the error. This is the primary value-add
-of our parser's error model over node-semver.
+Contains `incrementTests` -- bump operation vectors ported from node-semver.
+Each entry specifies an input version, bump type, and expected output version.
 
 ---
 
@@ -313,165 +248,78 @@ of our parser's error model over node-semver.
 
 ### 1. SemVer 2.0.0 Spec Compliance
 
-The SemVer 2.0.0 specification defines precise rules for version format,
-precedence, and comparison. Tests must cover every normative rule.
+Driven by `spec-compliance.test.ts` using fixture data. Covers:
 
-**Version Format (spec section 2):**
-
-- Valid versions: `1.0.0`, `0.0.0`, `999.999.999`
-- Prerelease: `1.0.0-alpha`, `1.0.0-0.3.7`, `1.0.0-x.7.z.92`
-- Build metadata: `1.0.0+build`, `1.0.0+20130313144700`
-- Combined: `1.0.0-alpha+001`
-
-**Precedence (spec section 11):**
-
-- Major > minor > patch: `2.0.0 > 1.9.9`
-- Prerelease lower than release: `1.0.0-alpha < 1.0.0`
-- Prerelease ordering: numeric < alphanumeric, shorter < longer
-- Build metadata ignored in comparison: `1.0.0+a == 1.0.0+b`
-
-**Edge Cases:**
-
-- Leading zeros in numeric identifiers are forbidden: `01.0.0` must fail
-- Empty prerelease identifiers are forbidden: `1.0.0-` must fail
-- Prerelease with mixed numeric/string: `1.0.0-alpha.1.beta.2`
-- Maximum safe integer boundary for major/minor/patch
+- **Valid versions:** All 9 spec examples plus 20+ additional valid strings
+- **Invalid versions:** Leading zeros, empty identifiers, invalid characters,
+  structural invalidity
+- **Precedence:** The 28 ordered pairs from Section 11 plus additional pairs
+- **Build metadata equality:** Versions differing only in build are equal
+- **Roundtrip parsing:** `parse(v.toString())` produces equivalent version
 
 ### 2. Range Desugaring Correctness
 
-Every range syntactic sugar form must desugar to the correct primitive
-comparators.
+Covered by `parseRange.test.ts`. Every range sugar form is tested:
 
-**Caret ranges:**
-
-| Input | Desugared |
-| :--- | :--- |
-| `^1.2.3` | `>=1.2.3 <2.0.0` |
-| `^0.2.3` | `>=0.2.3 <0.3.0` |
-| `^0.0.3` | `>=0.0.3 <0.0.4` |
-| `^1.2.x` | `>=1.2.0 <2.0.0` |
-| `^0.0.x` | `>=0.0.0 <0.1.0` |
-| `^0.0` | `>=0.0.0 <0.1.0` |
-
-**Tilde ranges:**
-
-| Input | Desugared |
-| :--- | :--- |
-| `~1.2.3` | `>=1.2.3 <1.3.0` |
-| `~1.2` | `>=1.2.0 <1.3.0` |
-| `~0.2.3` | `>=0.2.3 <0.3.0` |
-| `~1` | `>=1.0.0 <2.0.0` |
-
-**X-ranges:**
-
-| Input | Desugared |
-| :--- | :--- |
-| `*` | `>=0.0.0` |
-| `1.x` | `>=1.0.0 <2.0.0` |
-| `1.2.x` | `>=1.2.0 <1.3.0` |
-| `1.2.*` | `>=1.2.0 <1.3.0` |
-| `` (empty) | `>=0.0.0` |
-
-**Hyphen ranges:**
-
-| Input | Desugared |
-| :--- | :--- |
-| `1.2.3 - 2.3.4` | `>=1.2.3 <=2.3.4` |
-| `1.2 - 2.3.4` | `>=1.2.0 <=2.3.4` |
-| `1.2.3 - 2.3` | `>=1.2.3 <2.4.0` |
-| `1.2.3 - 2` | `>=1.2.3 <3.0.0` |
-
-**Union (OR):**
-
-- `>=1.0.0 <2.0.0 || >=3.0.0` produces two ComparatorSets
+- Caret ranges (`^1.2.3`, `^0.2.3`, `^0.0.3`, `^1.2.x`, `^0.0.x`, `^0.0`)
+- Tilde ranges (`~1.2.3`, `~1.2`, `~0.2.3`, `~1`)
+- X-ranges (`*`, `1.x`, `1.2.x`, `1.2.*`, empty string)
+- Hyphen ranges (`1.2.3 - 2.3.4`, `1.2 - 2.3.4`, `1.2.3 - 2.3`, `1.2.3 - 2`)
+- X-ranges with operators (`>1.x`, `>=1.x`, `<1.x`, `<=1.x`)
+- OR unions (`>=1.0.0 <2.0.0 || >=3.0.0`)
 
 ### 3. Parser Error Position Accuracy
 
-The recursive descent parser must report the character position where parsing
-failed. Tests verify that position values point to the exact character that
-violates the grammar.
+Covered by `parseVersion.test.ts` and `parseRange.test.ts`. Tests assert
+both the error type and the `position` field value:
 
-**Test cases:**
+- `"01.0.0"` -- position at leading zero
+- `"1.0.0-"` -- position at end (missing prerelease identifier)
+- `"v1.0.0"` -- position 0 (v-prefix rejected)
+- `">=1.02.3"` -- position at leading zero in minor
 
-- `"1.2.a"` -- position at `a` (the non-numeric patch)
-- `"1.2.3-"` -- position at end (missing prerelease identifier)
-- `"01.0.0"` -- position at `0` (leading zero in major)
-- `"1.2.3 - "` -- position at end (incomplete hyphen range)
-- `"^"` -- position at end (missing version after caret)
-- `">=1.0.0 <"` -- position at end (incomplete comparator)
+### 4. VersionCache Lifecycle
 
-Each test asserts both the error type (e.g., `InvalidVersionError`) and the
-`position` field value.
+Covered by `VersionCache.test.ts`. Tests use isolated Layer instances:
 
-### 4. VersionCache Concurrency
+- Mutation operations: load, add, remove (all infallible)
+- Query operations: versions, latest, oldest (EmptyCacheError on empty)
+- Resolution: resolve, resolveString, filter
+- Grouping: groupBy, latestByMajor, latestByMinor
+- Navigation: diff, next, prev (VersionNotFoundError for missing)
+- Concurrent operations: concurrent adds all succeed
 
-VersionCache is backed by `Ref<SortedSet<SemVer>>`. Tests verify that
-concurrent operations produce correct results.
+### 5. Error Class Construction
 
-**Scenarios:**
+Covered by `errors.test.ts`. Every error class is tested for:
 
-- Concurrent `add` calls: all versions appear in cache
-- `load` followed by concurrent `resolve` calls: all resolve correctly
-- `remove` during `resolve`: resolution sees consistent snapshot
-- Multiple independent VersionCache instances do not interfere
+- Construction with all fields
+- `_tag` discriminator value
+- `message` getter output format
+- Field accessibility (input, position, range, version, etc.)
+- Structural equality between identical errors
 
-### 5. Edge Cases
+### 6. Schema Traits
 
-**Leading zeros:**
+Covered by `schemas.test.ts` and `SemVer.test.ts`:
 
-- `01.0.0`, `1.02.0`, `1.0.03` must all fail with InvalidVersionError
-- `1.0.0-01` must fail (numeric prerelease with leading zero)
-- `1.0.0-alpha.01` must fail
+- `Equal.equals` excludes build metadata
+- `Hash.hash` is consistent with Equal (identical for versions differing only in build)
+- `toString()` includes all components (prerelease + build)
+- `toJSON()` produces structured representation
+- `nodejs.util.inspect.custom` is implemented
+- `disableValidation` skips schema checks for trusted construction
 
-**Empty and whitespace:**
+### 7. Cross-Module Edge Cases
 
-- `""` must fail
-- `" 1.0.0"` must fail (no trimming)
-- `"1.0.0 "` must fail
+Covered by `coverage.test.ts`. Targets specific code paths:
 
-**Build metadata in comparisons:**
-
-- `Equal.equals(v("1.0.0+a"), v("1.0.0+b"))` must be `true`
-- `Order` comparison of `1.0.0+a` vs `1.0.0+b` must be `0`
-- `Hash` of `1.0.0+a` and `1.0.0+b` must be identical
-
-**Prerelease edge cases (critical -- node-semver's #1 pain point):**
-
-Prerelease handling is the single largest source of bugs in node-semver,
-accounting for 15+ open issues. Our test suite must comprehensively cover
-every prerelease scenario to establish correctness where node-semver
-historically fails.
-
-*Comparison and ordering:*
-
-- `1.0.0-0` is valid (numeric zero prerelease)
-- `1.0.0-alpha` < `1.0.0-alpha.1` (shorter < longer when prefix matches)
-- `1.0.0-alpha.1` < `1.0.0-alpha.beta` (numeric < alphanumeric)
-- `1.0.0-1` < `1.0.0-alpha` (numeric < alphanumeric)
-- Mixed numeric/alphanumeric comparison across multiple identifiers
-
-*Leading zeros in numeric prerelease identifiers (must reject):*
-
-- `1.0.0-01`, `1.0.0-alpha.01`, `1.0.0-0.01`
-
-*Prerelease matching in ranges (same-tuple policy):*
-
-- `>=1.0.0-alpha` should only match prereleases on `1.0.0`, not `1.0.1-alpha`
-- `^1.0.0-beta` desugaring with prerelease-aware bounds
-- `~1.0.0-rc.1` desugaring with prerelease-aware bounds
-
-*Caret/tilde desugaring with prerelease:*
-
-- `^1.0.0-alpha` must desugar correctly (lower bound includes prerelease)
-- `^0.0.1-beta` edge case (caret on 0.0.x with prerelease)
-- `~0.1.0-rc.1` edge case
-
-*Tricky-but-valid prerelease strings:*
-
-- `1.0.0-0alpha` (starts with digit, contains alpha -- this is alphanumeric)
-- `1.0.0-0-0` (hyphen within prerelease identifier)
-- `1.0.0--` (double-hyphen: empty-looking but valid per BNF)
-- `1.0.0-0.0.0.0` (deeply nested numeric identifiers)
+- Algebra edge cases (intersection failures, empty results)
+- SemVerOrderWithBuild comparison
+- bumpPrerelease with and without identifier
+- minSatisfying over version arrays
+- Schema construction edge cases
+- Comparator and Range toString formatting
 
 ---
 
@@ -483,42 +331,29 @@ v8 provider via Vitest. The v8 provider uses V8's built-in code coverage,
 which is faster than istanbul and produces accurate branch coverage for
 compiled TypeScript.
 
-### Coverage Targets
-
-| Metric | Target | Rationale |
-| :--- | :--- | :--- |
-| Statements | 90% | High coverage baseline |
-| Branches | 95% | Parser has many branches; near-complete coverage needed |
-| Functions | 90% | All public functions must be tested |
-| Lines | 90% | Consistent with statement coverage |
-
-Branch coverage is the most critical metric because the recursive descent
-parser contains numerous conditional paths for grammar rules, error recovery,
-and range desugaring. Missing a branch in parser code likely means missing a
-spec compliance case.
-
 ### Coverage Priorities
 
-**High priority (95%+ branch coverage):**
+**High priority (parser and desugaring):**
 
 - `src/utils/grammar.ts` -- every grammar rule path
 - `src/utils/desugar.ts` -- every desugaring case
-- `src/errors/*.ts` -- every error constructor
+- `src/errors/*.ts` -- every error constructor and message getter
 
-**Standard priority (90%+ coverage):**
+**Standard priority (core operations):**
 
-- `src/schemas/SemVer.ts` -- construction, bump operations
-- `src/schemas/Range.ts` -- matching, algebra
-- `src/schemas/Comparator.ts` -- operator matching
-- `src/utils/compare.ts` -- ordering logic
+- `src/schemas/SemVer.ts` -- construction, Equal, Hash, Inspectable
+- `src/utils/compare.ts` -- ordering and collection operations
+- `src/utils/matching.ts` -- range satisfaction logic
+- `src/utils/algebra.ts` -- range algebra operations
+- `src/utils/bump.ts` -- bump operations
+- `src/utils/diff.ts` -- version diffing
 
-**Moderate priority (80%+ coverage):**
+**Service priority:**
 
-- `src/services/VersionCache.ts` -- service interface
-- `src/layers/VersionCacheLive.ts` -- service operations (some navigation
-  methods are Phase 3 features)
+- `src/layers/VersionCacheLive.ts` -- all cache operations
+- `src/layers/SemVerParserLive.ts` -- parser layer
+- `src/utils/order.ts` -- Order instances
 - `src/utils/normalize.ts` -- normalization helpers
-- `src/utils/matching.ts` -- range matching utilities
 
 ### Excluded from Coverage
 
@@ -531,68 +366,40 @@ spec compliance case.
 
 ### Running Effect Tests in Vitest
 
-Every test that involves Effect must ultimately call `Effect.runPromise` (or
-`Effect.runSync` for pure synchronous Effects) to bridge into Vitest's
-promise-based assertion model.
+Tests use two patterns depending on whether the operation requires services:
+
+**Standalone functions (no Layer required):**
 
 ```typescript
-it("parses a valid version", () =>
+it("parses a valid version", () => {
+  const v = Effect.runSync(parseValidSemVer("1.2.3"))
+  expect(v.major).toBe(1)
+})
+```
+
+**Service-dependent operations (Layer required):**
+
+```typescript
+it("resolves a range", () =>
   Effect.gen(function* () {
-    const parser = yield* SemVerParser
-    const v = yield* parser.parseVersion("1.2.3")
-    expect(v.major).toBe(1)
-    expect(v.minor).toBe(2)
-    expect(v.patch).toBe(3)
-  }).pipe(Effect.provide(SemVerParserLive), Effect.runPromise))
-
-// SemVerParserLive is imported from src/layers/SemVerParserLive.ts
+    const cache = yield* VersionCache
+    yield* cache.load(versions)
+    const result = yield* cache.resolve(range)
+    expect(result.major).toBe(1)
+  }).pipe(
+    Effect.provide(Layer.merge(VersionCacheLive, SemVerParserLive)),
+    Effect.runPromise,
+  ))
 ```
 
-### Testing Effect Services with Test Layers
+### Testing Typed Errors via Effect.either
 
-Services are tested by providing a Layer that constructs a fresh service
-instance per test. This keeps tests isolated.
-
-```typescript
-const TestParserLayer = SemVerParserLive
-
-const TestCacheLayer = Layer.effect(
-  VersionCache,
-  Effect.gen(function* () {
-    const ref = yield* Ref.make(SortedSet.empty<SemVer>())
-    return VersionCache.make(ref)
-  })
-)
-```
-
-For tests that need pre-populated state:
+The cleanest pattern for error assertions uses `Effect.either`:
 
 ```typescript
-const preloadedCacheLayer = (versions: ReadonlyArray<string>) =>
-  Layer.effect(
-    VersionCache,
-    Effect.gen(function* () {
-      const cache = yield* VersionCache.make()
-      yield* cache.load(versions.map(parseVersionUnsafe))
-      return cache
-    })
-  )
-```
-
-### Asserting Typed Errors via Effect.either
-
-The cleanest pattern for error assertions uses `Effect.either`, which captures
-the error channel as an `Either<A, E>` without requiring Cause/Option
-unwrapping. This is preferred over the more verbose `Effect.exit` + `Cause`
-extraction pattern.
-
-```typescript
-it("rejects leading zeros", async () => {
-  const result = await Effect.runPromise(
-    parser.parseVersion("01.0.0").pipe(
-      Effect.either,
-      Effect.provide(TestParserLayer)
-    )
+it("rejects leading zeros", () => {
+  const result = Effect.runSync(
+    parseValidSemVer("01.0.0").pipe(Effect.either)
   )
   expect(result._tag).toBe("Left")
   if (result._tag === "Left") {
@@ -603,54 +410,49 @@ it("rejects leading zeros", async () => {
 })
 ```
 
-### Testing with Ref-Based State
+### Fixture-Driven Tests via it.each
 
-VersionCache tests use Ref to verify state transitions:
+The `spec-compliance.test.ts` file uses `it.each` with fixture arrays for
+data-driven testing:
 
 ```typescript
-it("adds a version to the cache", () =>
-  Effect.gen(function* () {
-    const cache = yield* VersionCache
-    yield* cache.add(v1_0_0)
-    const versions = yield* cache.versions
-    expect(versions).toHaveLength(1)
-    expect(Equal.equals(versions[0], v1_0_0)).toBe(true)
-  }).pipe(Effect.provide(TestCacheLayer), Effect.runPromise))
+it.each(validVersions)("parses %s", (input) => {
+  expect(() => parse(input)).not.toThrow()
+})
+
+it.each(invalidVersions)("rejects %s", (input) => {
+  expect(() => parse(input)).toThrow()
+})
 ```
 
-For concurrency tests, use `Effect.all` with concurrent option:
+### Direct Construction with disableValidation
+
+Tests that need specific SemVer instances without parsing use direct
+construction:
 
 ```typescript
-it("handles concurrent adds", () =>
-  Effect.gen(function* () {
-    const cache = yield* VersionCache
-    yield* Effect.all(
-      [cache.add(v1_0_0), cache.add(v2_0_0), cache.add(v3_0_0)],
-      { concurrency: "unbounded" }
-    )
-    const versions = yield* cache.versions
-    expect(versions).toHaveLength(3)
-  }).pipe(Effect.provide(TestCacheLayer), Effect.runPromise))
+const v = (major: number, minor: number, patch: number,
+           prerelease: ReadonlyArray<string | number> = [],
+           build: ReadonlyArray<string> = []) =>
+  new SemVer({ major, minor, patch,
+               prerelease: [...prerelease],
+               build: [...build] },
+             { disableValidation: true })
 ```
 
 ### Testing Order and Equal Instances
 
-Order and Equal are tested via Effect's standard trait interfaces:
-
 ```typescript
-import { Order as Ord, Equal } from "effect"
-
 it("orders versions by precedence", () => {
-  const sorted = [v2_0_0, v1_0_0, v1_1_0].sort(SemVerOrder)
-  expect(sorted.map(String)).toEqual(["1.0.0", "1.1.0", "2.0.0"])
+  expect(SemVerOrder(parse("1.0.0"), parse("2.0.0"))).toBe(-1)
 })
 
 it("treats build metadata as equal", () => {
-  expect(Equal.equals(v1_0_0_buildA, v1_0_0_buildB)).toBe(true)
+  expect(Equal.equals(parse("1.0.0+a"), parse("1.0.0+b"))).toBe(true)
 })
 
 it("produces identical hashes ignoring build", () => {
-  expect(Hash.hash(v1_0_0_buildA)).toBe(Hash.hash(v1_0_0_buildB))
+  expect(Hash.hash(parse("1.0.0+a"))).toBe(Hash.hash(parse("1.0.0+b")))
 })
 ```
 
@@ -658,27 +460,15 @@ it("produces identical hashes ignoring build", () => {
 
 ## Related Documentation
 
-**Design Spec:**
-
-- [semver-effect Design Spec](../../../docs/specs/semver-effect-design.md) --
-  Approved specification with full API surface and error model
-
-**Architecture:**
-
 - [architecture.md](architecture.md) -- System architecture and component
   overview
-
-**Monorepo Testing Configuration:**
-
-- `vitest.config.ts` at the monorepo root defines the shared test runner
-  configuration
+- [error-model.md](error-model.md) -- Error types tested in errors.test.ts
+- [parser.md](parser.md) -- Parser design tested in parseVersion/parseRange
+- [operations.md](operations.md) -- Operations tested in compare/matching/etc.
+- [version-cache.md](version-cache.md) -- Cache service tested in VersionCache
 
 ---
 
-**Document Status:** Draft -- covers test architecture, categories, coverage
-strategy, and Effect testing patterns based on the approved design spec. Will
-be updated as test files are implemented and coverage data becomes available.
-
-**Next Steps:** Begin implementing `errors.test.ts` and `SemVer.test.ts` in
-`__test__/` as the first test files. Update coverage targets once baseline measurements are
-available.
+**Document Status:** Current -- covers the complete test suite as implemented.
+650 tests across 16 files, 3920 lines of test code. All tests pass. Fixture
+data ported from node-semver (strict-mode only).
