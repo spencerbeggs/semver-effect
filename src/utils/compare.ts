@@ -1,6 +1,6 @@
 import { Equal, Function as Fn, Option } from "effect";
-import { SemVerOrder, SemVerOrderWithBuild } from "../order.js";
 import { SemVer } from "../schemas/SemVer.js";
+import { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
 
 export const compare: {
 	(that: SemVer): (self: SemVer) => -1 | 0 | 1;

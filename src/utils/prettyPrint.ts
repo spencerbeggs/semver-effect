@@ -4,7 +4,7 @@ import type { Range } from "../schemas/Range.js";
 import type { SemVer } from "../schemas/SemVer.js";
 import type { VersionDiff } from "../schemas/VersionDiff.js";
 
-type Printable = SemVer | Comparator | Range | VersionDiff;
+export type Printable = SemVer | Comparator | Range | VersionDiff;
 
 const matcher = Match.type<Printable>().pipe(
 	Match.tag("SemVer", (sv) => sv.toString()),

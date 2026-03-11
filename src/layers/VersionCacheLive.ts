@@ -2,13 +2,13 @@ import { Effect, Layer, Option, Ref, SortedSet } from "effect";
 import { EmptyCacheError } from "../errors/EmptyCacheError.js";
 import { UnsatisfiedRangeError } from "../errors/UnsatisfiedRangeError.js";
 import { VersionNotFoundError } from "../errors/VersionNotFoundError.js";
-import { SemVerOrder } from "../order.js";
 import type { Range } from "../schemas/Range.js";
 import type { SemVer } from "../schemas/SemVer.js";
 import { SemVerParser } from "../services/SemVerParser.js";
 import { VersionCache } from "../services/VersionCache.js";
 import { diff as computeDiff } from "../utils/diff.js";
 import { satisfies as matchSatisfies } from "../utils/matching.js";
+import { SemVerOrder } from "../utils/order.js";
 
 const toArray = (set: SortedSet.SortedSet<SemVer>): ReadonlyArray<SemVer> => Array.from(SortedSet.values(set));
 

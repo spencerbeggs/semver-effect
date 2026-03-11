@@ -1,5 +1,5 @@
 import { Order } from "effect";
-import type { SemVer } from "./schemas/SemVer.js";
+import type { SemVer } from "../schemas/SemVer.js";
 
 const comparePrereleaseIdentifier = (a: string | number, b: string | number): number => {
 	// Both numbers: compare as integers

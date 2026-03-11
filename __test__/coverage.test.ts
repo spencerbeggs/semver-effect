@@ -1,7 +1,6 @@
 import { inspect } from "node:util";
 import { Effect, Option } from "effect";
 import { describe, expect, it } from "vitest";
-import { SemVerOrderWithBuild } from "../src/order.js";
 import { Comparator } from "../src/schemas/Comparator.js";
 import { Range } from "../src/schemas/Range.js";
 import { SemVer } from "../src/schemas/SemVer.js";
@@ -10,6 +9,7 @@ import { bumpPrerelease } from "../src/utils/bump.js";
 import { parseRangeSet, parseSingleComparator, parseValidSemVer } from "../src/utils/grammar.js";
 import { minSatisfying, satisfies } from "../src/utils/matching.js";
 import { normalizeRange } from "../src/utils/normalize.js";
+import { SemVerOrderWithBuild } from "../src/utils/order.js";
 
 const v = (
 	major: number,

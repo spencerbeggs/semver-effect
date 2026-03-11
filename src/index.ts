@@ -8,21 +8,59 @@
  */
 
 // Errors
-export { EmptyCacheError } from "./errors/EmptyCacheError.js";
-export { InvalidBumpError } from "./errors/InvalidBumpError.js";
-export { InvalidComparatorError } from "./errors/InvalidComparatorError.js";
-export { InvalidPrereleaseError } from "./errors/InvalidPrereleaseError.js";
-export { InvalidRangeError } from "./errors/InvalidRangeError.js";
-export { InvalidVersionError } from "./errors/InvalidVersionError.js";
-export { UnsatisfiableConstraintError } from "./errors/UnsatisfiableConstraintError.js";
-export { UnsatisfiedRangeError } from "./errors/UnsatisfiedRangeError.js";
-export { VersionFetchError } from "./errors/VersionFetchError.js";
-export { VersionNotFoundError } from "./errors/VersionNotFoundError.js";
+export {
+	EmptyCacheError,
+	/** @internal */
+	EmptyCacheErrorBase,
+} from "./errors/EmptyCacheError.js";
+export {
+	InvalidBumpError,
+	/** @internal */
+	InvalidBumpErrorBase,
+} from "./errors/InvalidBumpError.js";
+export {
+	InvalidComparatorError,
+	/** @internal */
+	InvalidComparatorErrorBase,
+} from "./errors/InvalidComparatorError.js";
+export {
+	InvalidPrereleaseError,
+	/** @internal */
+	InvalidPrereleaseErrorBase,
+} from "./errors/InvalidPrereleaseError.js";
+export {
+	InvalidRangeError,
+	/** @internal */
+	InvalidRangeErrorBase,
+} from "./errors/InvalidRangeError.js";
+export {
+	InvalidVersionError,
+	/** @internal */
+	InvalidVersionErrorBase,
+} from "./errors/InvalidVersionError.js";
+export {
+	UnsatisfiableConstraintError,
+	/** @internal */
+	UnsatisfiableConstraintErrorBase,
+} from "./errors/UnsatisfiableConstraintError.js";
+export {
+	UnsatisfiedRangeError,
+	/** @internal */
+	UnsatisfiedRangeErrorBase,
+} from "./errors/UnsatisfiedRangeError.js";
+export {
+	VersionFetchError,
+	/** @internal */
+	VersionFetchErrorBase,
+} from "./errors/VersionFetchError.js";
+export {
+	VersionNotFoundError,
+	/** @internal */
+	VersionNotFoundErrorBase,
+} from "./errors/VersionNotFoundError.js";
 // Layers
 export { SemVerParserLive } from "./layers/SemVerParserLive.js";
 export { VersionCacheLive } from "./layers/VersionCacheLive.js";
-// Order
-export { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
 // Schemas
 export { Comparator } from "./schemas/Comparator.js";
 export type { ComparatorSet } from "./schemas/Range.js";
@@ -61,6 +99,10 @@ export { diff } from "./utils/diff.js";
 export { parseSingleComparator as parseComparator, parseValidSemVer as parseVersion } from "./utils/grammar.js";
 // Matching
 export { filter, maxSatisfying, minSatisfying, satisfies } from "./utils/matching.js";
+// Order
+export { SemVerOrder, SemVerOrderWithBuild } from "./utils/order.js";
+// Parse range
 export { parseRange } from "./utils/parseRange.js";
 // Pretty print
+export type { Printable } from "./utils/prettyPrint.js";
 export { prettyPrint } from "./utils/prettyPrint.js";

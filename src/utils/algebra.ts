@@ -1,8 +1,8 @@
 import { Effect, Function as Fn } from "effect";
 import { UnsatisfiableConstraintError } from "../errors/UnsatisfiableConstraintError.js";
-import { SemVerOrder } from "../order.js";
 import type { Comparator } from "../schemas/Comparator.js";
 import { Range } from "../schemas/Range.js";
+import { SemVerOrder } from "./order.js";
 
 const makeRange = (sets: ReadonlyArray<ReadonlyArray<Comparator>>): Range =>
 	new Range({ sets: sets.map((s) => [...s]) }, { disableValidation: true });

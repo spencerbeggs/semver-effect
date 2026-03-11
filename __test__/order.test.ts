@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SemVerOrder, SemVerOrderWithBuild } from "../src/order.js";
 import { SemVer } from "../src/schemas/SemVer.js";
+import { SemVerOrder, SemVerOrderWithBuild } from "../src/utils/order.js";
 
 const v = (
 	major: number,

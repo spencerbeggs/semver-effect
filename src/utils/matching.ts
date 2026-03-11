@@ -1,8 +1,8 @@
 import { Function as Fn, Option } from "effect";
-import { SemVerOrder } from "../order.js";
 import type { Comparator } from "../schemas/Comparator.js";
 import type { Range } from "../schemas/Range.js";
 import type { SemVer } from "../schemas/SemVer.js";
+import { SemVerOrder } from "./order.js";
 
 const satisfiesComparator = (version: SemVer, comp: Comparator): boolean => {
 	const cmp = SemVerOrder(version, comp.version);

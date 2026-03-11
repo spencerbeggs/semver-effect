@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { SemVerOrder } from "../src/order.js";
 import { bumpMajor, bumpMinor, bumpPatch } from "../src/utils/bump.js";
 import { parseRangeSet, parseValidSemVer } from "../src/utils/grammar.js";
 import { satisfies } from "../src/utils/matching.js";
 import { normalizeRange } from "../src/utils/normalize.js";
+import { SemVerOrder } from "../src/utils/order.js";
 import { incrementTests } from "./fixtures/increments.js";
 import { rangeTests } from "./fixtures/ranges.js";
 import { comparisonPairs, invalidVersions, validVersions } from "./fixtures/versions.js";
