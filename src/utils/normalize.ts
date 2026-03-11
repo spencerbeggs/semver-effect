@@ -29,7 +29,9 @@ const sortComparators = (set: ReadonlyArray<Comparator>): ReadonlyArray<Comparat
 const removeDuplicates = (set: ReadonlyArray<Comparator>): ReadonlyArray<Comparator> => {
 	const seen = new Set<string>();
 	return set.filter((c) => {
-		const key = `${c.operator}${c.version.toString()}`;
+		const v = c.version;
+		const pre = v.prerelease.length > 0 ? `-${v.prerelease.join(".")}` : "";
+		const key = `${c.operator}${v.major}.${v.minor}.${v.patch}${pre}`;
 		if (seen.has(key)) return false;
 		seen.add(key);
 		return true;

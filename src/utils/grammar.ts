@@ -43,127 +43,151 @@ const peekIdentChar = (s: ParserState): boolean => {
 	return ch !== undefined && isIdentChar(ch);
 };
 
-const fail = (s: ParserState): InvalidVersionError => new InvalidVersionError({ input: s.input, position: s.pos });
+// ---------------------------------------------------------------------------
+// Parameterized low-level parsers (shared between version and range parsing)
+// ---------------------------------------------------------------------------
 
-const parseNumericIdentifier = (s: ParserState): Effect.Effect<number, InvalidVersionError> =>
-	Effect.gen(function* () {
-		const start = s.pos;
-		const first = peek(s);
-		if (first === undefined || !isDigit(first)) {
-			return yield* Effect.fail(fail(s));
-		}
+type FailFn<E> = (s: ParserState, position?: number) => E;
 
-		let digits = "";
-		while (peekDigit(s)) {
-			digits += advance(s);
-		}
-
-		// Reject leading zeros (except "0" itself)
-		if (digits.length > 1 && digits[0] === "0") {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidVersionError({ input: s.input, position: start }));
-		}
-
-		const value = Number(digits);
-		if (!Number.isSafeInteger(value)) {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidVersionError({ input: s.input, position: start }));
-		}
-
-		return value;
-	});
-
-const parsePrereleaseIdentifier = (s: ParserState): Effect.Effect<string | number, InvalidVersionError> =>
-	Effect.gen(function* () {
-		const start = s.pos;
-		let token = "";
-		let hasNonDigit = false;
-
-		const first = peek(s);
-		if (first === undefined || !isIdentChar(first)) {
-			return yield* Effect.fail(fail(s));
-		}
-
-		while (peekIdentChar(s)) {
-			const ch = advance(s) ?? "";
-			if (!isDigit(ch)) {
-				hasNonDigit = true;
+const makeParseNumericIdentifier =
+	<E>(makeFail: FailFn<E>) =>
+	(s: ParserState): Effect.Effect<number, E> =>
+		Effect.gen(function* () {
+			const start = s.pos;
+			const first = peek(s);
+			if (first === undefined || !isDigit(first)) {
+				return yield* Effect.fail(makeFail(s));
 			}
-			token += ch;
-		}
 
-		if (token.length === 0) {
-			return yield* Effect.fail(fail(s));
-		}
+			let digits = "";
+			while (peekDigit(s)) {
+				digits += advance(s);
+			}
 
-		if (hasNonDigit) {
-			// Alphanumeric identifier — no leading zero restriction
+			// Reject leading zeros (except "0" itself)
+			if (digits.length > 1 && digits[0] === "0") {
+				s.pos = start;
+				return yield* Effect.fail(makeFail(s, start));
+			}
+
+			const value = Number(digits);
+			if (!Number.isSafeInteger(value)) {
+				s.pos = start;
+				return yield* Effect.fail(makeFail(s, start));
+			}
+
+			return value;
+		});
+
+const makeParsePrereleaseIdentifier =
+	<E>(makeFail: FailFn<E>) =>
+	(s: ParserState): Effect.Effect<string | number, E> =>
+		Effect.gen(function* () {
+			const start = s.pos;
+			let token = "";
+			let hasNonDigit = false;
+
+			const first = peek(s);
+			if (first === undefined || !isIdentChar(first)) {
+				return yield* Effect.fail(makeFail(s));
+			}
+
+			while (peekIdentChar(s)) {
+				const ch = advance(s) ?? "";
+				if (!isDigit(ch)) {
+					hasNonDigit = true;
+				}
+				token += ch;
+			}
+
+			if (token.length === 0) {
+				return yield* Effect.fail(makeFail(s));
+			}
+
+			if (hasNonDigit) {
+				// Alphanumeric identifier — no leading zero restriction
+				return token;
+			}
+
+			// All digits — numeric identifier, check leading zeros
+			if (token.length > 1 && token[0] === "0") {
+				s.pos = start;
+				return yield* Effect.fail(makeFail(s, start));
+			}
+
+			const value = Number(token);
+			if (!Number.isSafeInteger(value)) {
+				s.pos = start;
+				return yield* Effect.fail(makeFail(s, start));
+			}
+
+			return value;
+		});
+
+const makeParseBuildIdentifier =
+	<E>(makeFail: FailFn<E>) =>
+	(s: ParserState): Effect.Effect<string, E> =>
+		Effect.gen(function* () {
+			let token = "";
+
+			const first = peek(s);
+			if (first === undefined || !isIdentChar(first)) {
+				return yield* Effect.fail(makeFail(s));
+			}
+
+			while (peekIdentChar(s)) {
+				token += advance(s);
+			}
+
+			if (token.length === 0) {
+				return yield* Effect.fail(makeFail(s));
+			}
+
+			// Build identifiers allow leading zeros — just return as string
 			return token;
-		}
+		});
 
-		// All digits — numeric identifier, check leading zeros
-		if (token.length > 1 && token[0] === "0") {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidVersionError({ input: s.input, position: start }));
-		}
+const makeParsePreRelease =
+	<E>(parsePrereleaseId: (s: ParserState) => Effect.Effect<string | number, E>) =>
+	(s: ParserState): Effect.Effect<Array<string | number>, E> =>
+		Effect.gen(function* () {
+			const identifiers: Array<string | number> = [];
 
-		const value = Number(token);
-		if (!Number.isSafeInteger(value)) {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidVersionError({ input: s.input, position: start }));
-		}
+			identifiers.push(yield* parsePrereleaseId(s));
 
-		return value;
-	});
+			while (!atEnd(s) && peek(s) === ".") {
+				advance(s); // consume '.'
+				identifiers.push(yield* parsePrereleaseId(s));
+			}
 
-const parseBuildIdentifier = (s: ParserState): Effect.Effect<string, InvalidVersionError> =>
-	Effect.gen(function* () {
-		let token = "";
+			return identifiers;
+		});
 
-		const first = peek(s);
-		if (first === undefined || !isIdentChar(first)) {
-			return yield* Effect.fail(fail(s));
-		}
+const makeParseBuild =
+	<E>(parseBuildId: (s: ParserState) => Effect.Effect<string, E>) =>
+	(s: ParserState): Effect.Effect<Array<string>, E> =>
+		Effect.gen(function* () {
+			const identifiers: Array<string> = [];
 
-		while (peekIdentChar(s)) {
-			token += advance(s);
-		}
+			identifiers.push(yield* parseBuildId(s));
 
-		if (token.length === 0) {
-			return yield* Effect.fail(fail(s));
-		}
+			while (!atEnd(s) && peek(s) === ".") {
+				advance(s); // consume '.'
+				identifiers.push(yield* parseBuildId(s));
+			}
 
-		// Build identifiers allow leading zeros — just return as string
-		return token;
-	});
+			return identifiers;
+		});
 
-const parsePreRelease = (s: ParserState): Effect.Effect<Array<string | number>, InvalidVersionError> =>
-	Effect.gen(function* () {
-		const identifiers: Array<string | number> = [];
+// Version-specific instantiations
+const failVersion: FailFn<InvalidVersionError> = (s, position) =>
+	new InvalidVersionError({ input: s.input, position: position ?? s.pos });
 
-		identifiers.push(yield* parsePrereleaseIdentifier(s));
-
-		while (!atEnd(s) && peek(s) === ".") {
-			advance(s); // consume '.'
-			identifiers.push(yield* parsePrereleaseIdentifier(s));
-		}
-
-		return identifiers;
-	});
-
-const parseBuild = (s: ParserState): Effect.Effect<Array<string>, InvalidVersionError> =>
-	Effect.gen(function* () {
-		const identifiers: Array<string> = [];
-
-		identifiers.push(yield* parseBuildIdentifier(s));
-
-		while (!atEnd(s) && peek(s) === ".") {
-			advance(s); // consume '.'
-			identifiers.push(yield* parseBuildIdentifier(s));
-		}
-
-		return identifiers;
-	});
+const parseNumericIdentifier = makeParseNumericIdentifier(failVersion);
+const parsePrereleaseIdentifier = makeParsePrereleaseIdentifier(failVersion);
+const parseBuildIdentifier = makeParseBuildIdentifier(failVersion);
+const parsePreRelease = makeParsePreRelease(parsePrereleaseIdentifier);
+const parseBuild = makeParseBuild(parseBuildIdentifier);
 
 /**
  * Parse a string into a {@link SemVer} using a strict SemVer 2.0.0
@@ -216,14 +240,14 @@ export const parseValidSemVer = (raw: string): Effect.Effect<SemVer, InvalidVers
 		const major = yield* parseNumericIdentifier(s);
 
 		if (peek(s) !== ".") {
-			return yield* Effect.fail(fail(s));
+			return yield* Effect.fail(failVersion(s));
 		}
 		advance(s); // consume '.'
 
 		const minor = yield* parseNumericIdentifier(s);
 
 		if (peek(s) !== ".") {
-			return yield* Effect.fail(fail(s));
+			return yield* Effect.fail(failVersion(s));
 		}
 		advance(s); // consume '.'
 
@@ -245,7 +269,7 @@ export const parseValidSemVer = (raw: string): Effect.Effect<SemVer, InvalidVers
 
 		// Verify entire input consumed
 		if (!atEnd(s)) {
-			return yield* Effect.fail(fail(s));
+			return yield* Effect.fail(failVersion(s));
 		}
 
 		return new SemVer({
@@ -261,123 +285,15 @@ export const parseValidSemVer = (raw: string): Effect.Effect<SemVer, InvalidVers
 // Range parsing helpers (reuse existing low-level helpers with InvalidRangeError)
 // ---------------------------------------------------------------------------
 
-const failRange = (s: ParserState): InvalidRangeError => new InvalidRangeError({ input: s.input, position: s.pos });
+// Range-specific instantiations
+const failRange: FailFn<InvalidRangeError> = (s, position) =>
+	new InvalidRangeError({ input: s.input, position: position ?? s.pos });
 
-const parseNumericIdentifierRange = (s: ParserState): Effect.Effect<number, InvalidRangeError> =>
-	Effect.gen(function* () {
-		const start = s.pos;
-		const first = peek(s);
-		if (first === undefined || !isDigit(first)) {
-			return yield* Effect.fail(failRange(s));
-		}
-
-		let digits = "";
-		while (peekDigit(s)) {
-			digits += advance(s);
-		}
-
-		if (digits.length > 1 && digits[0] === "0") {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidRangeError({ input: s.input, position: start }));
-		}
-
-		const value = Number(digits);
-		if (!Number.isSafeInteger(value)) {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidRangeError({ input: s.input, position: start }));
-		}
-
-		return value;
-	});
-
-const parsePrereleaseIdentifierRange = (s: ParserState): Effect.Effect<string | number, InvalidRangeError> =>
-	Effect.gen(function* () {
-		const start = s.pos;
-		let token = "";
-		let hasNonDigit = false;
-
-		const first = peek(s);
-		if (first === undefined || !isIdentChar(first)) {
-			return yield* Effect.fail(failRange(s));
-		}
-
-		while (peekIdentChar(s)) {
-			const ch = advance(s) ?? "";
-			if (!isDigit(ch)) {
-				hasNonDigit = true;
-			}
-			token += ch;
-		}
-
-		if (token.length === 0) {
-			return yield* Effect.fail(failRange(s));
-		}
-
-		if (hasNonDigit) {
-			return token;
-		}
-
-		if (token.length > 1 && token[0] === "0") {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidRangeError({ input: s.input, position: start }));
-		}
-
-		const value = Number(token);
-		if (!Number.isSafeInteger(value)) {
-			s.pos = start;
-			return yield* Effect.fail(new InvalidRangeError({ input: s.input, position: start }));
-		}
-
-		return value;
-	});
-
-const parseBuildIdentifierRange = (s: ParserState): Effect.Effect<string, InvalidRangeError> =>
-	Effect.gen(function* () {
-		let token = "";
-
-		const first = peek(s);
-		if (first === undefined || !isIdentChar(first)) {
-			return yield* Effect.fail(failRange(s));
-		}
-
-		while (peekIdentChar(s)) {
-			token += advance(s);
-		}
-
-		if (token.length === 0) {
-			return yield* Effect.fail(failRange(s));
-		}
-
-		return token;
-	});
-
-const parsePrereleaseRange = (s: ParserState): Effect.Effect<Array<string | number>, InvalidRangeError> =>
-	Effect.gen(function* () {
-		const identifiers: Array<string | number> = [];
-
-		identifiers.push(yield* parsePrereleaseIdentifierRange(s));
-
-		while (!atEnd(s) && peek(s) === ".") {
-			advance(s);
-			identifiers.push(yield* parsePrereleaseIdentifierRange(s));
-		}
-
-		return identifiers;
-	});
-
-const parseBuildRange = (s: ParserState): Effect.Effect<Array<string>, InvalidRangeError> =>
-	Effect.gen(function* () {
-		const identifiers: Array<string> = [];
-
-		identifiers.push(yield* parseBuildIdentifierRange(s));
-
-		while (!atEnd(s) && peek(s) === ".") {
-			advance(s);
-			identifiers.push(yield* parseBuildIdentifierRange(s));
-		}
-
-		return identifiers;
-	});
+const parseNumericIdentifierRange = makeParseNumericIdentifier(failRange);
+const parsePrereleaseIdentifierRange = makeParsePrereleaseIdentifier(failRange);
+const parseBuildIdentifierRange = makeParseBuildIdentifier(failRange);
+const parsePrereleaseRange = makeParsePreRelease(parsePrereleaseIdentifierRange);
+const parseBuildRange = makeParseBuild(parseBuildIdentifierRange);
 
 const parseXR = (s: ParserState): Effect.Effect<number | null, InvalidRangeError> =>
 	Effect.gen(function* () {

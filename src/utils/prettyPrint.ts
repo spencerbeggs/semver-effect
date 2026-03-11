@@ -15,7 +15,7 @@ const matcher = Match.type<Printable>().pipe(
 	Match.tag("SemVer", (sv) => sv.toString()),
 	Match.tag("Comparator", (c) => c.toString()),
 	Match.tag("Range", (r) => r.toString()),
-	Match.tag("VersionDiff", (d) => `${d.type} (${d.from.toString()} → ${d.to.toString()})`),
+	Match.tag("VersionDiff", (d) => d.toString()),
 	Match.exhaustive,
 );
 

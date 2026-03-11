@@ -12,6 +12,19 @@ import { SemVerOrder } from "../utils/order.js";
 
 const toArray = (set: SortedSet.SortedSet<SemVer>): ReadonlyArray<SemVer> => Array.from(SortedSet.values(set));
 
+const binarySearch = (arr: ReadonlyArray<SemVer>, target: SemVer): number => {
+	let lo = 0;
+	let hi = arr.length - 1;
+	while (lo <= hi) {
+		const mid = (lo + hi) >>> 1;
+		const cmp = SemVerOrder(arr[mid], target);
+		if (cmp === 0) return mid;
+		if (cmp < 0) lo = mid + 1;
+		else hi = mid - 1;
+	}
+	return -1;
+};
+
 const requireNonEmpty = (set: SortedSet.SortedSet<SemVer>): Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError> => {
 	if (SortedSet.size(set) === 0) {
 		return Effect.fail(new EmptyCacheError());
@@ -173,7 +186,7 @@ export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = 
 						return Effect.fail(new VersionNotFoundError({ version }));
 					}
 					const arr = toArray(set);
-					const idx = arr.findIndex((v) => SemVerOrder(v, version) === 0);
+					const idx = binarySearch(arr, version);
 					if (idx < arr.length - 1) {
 						return Effect.succeed(Option.some(arr[idx + 1]));
 					}
@@ -186,7 +199,7 @@ export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = 
 						return Effect.fail(new VersionNotFoundError({ version }));
 					}
 					const arr = toArray(set);
-					const idx = arr.findIndex((v) => SemVerOrder(v, version) === 0);
+					const idx = binarySearch(arr, version);
 					if (idx > 0) {
 						return Effect.succeed(Option.some(arr[idx - 1]));
 					}
