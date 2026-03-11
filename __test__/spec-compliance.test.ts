@@ -1,17 +1,14 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { bumpMajor, bumpMinor, bumpPatch } from "../src/utils/bump.js";
-import { parseRangeSet, parseValidSemVer } from "../src/utils/grammar.js";
-import { satisfies } from "../src/utils/matching.js";
-import { normalizeRange } from "../src/utils/normalize.js";
-import { SemVerOrder } from "../src/utils/order.js";
+import * as Range from "../src/Range.js";
+import * as SemVer from "../src/SemVer.js";
 import { incrementTests } from "./fixtures/increments.js";
 import { rangeTests } from "./fixtures/ranges.js";
 import { comparisonPairs, invalidVersions, validVersions } from "./fixtures/versions.js";
 
-const parse = (input: string) => Effect.runSync(parseValidSemVer(input));
+const parse = (input: string) => Effect.runSync(SemVer.fromString(input));
 
-const r = (input: string) => Effect.runSync(Effect.map(parseRangeSet(input), normalizeRange));
+const r = (input: string) => Effect.runSync(Range.fromString(input));
 
 describe("SemVer 2.0.0 Spec Compliance", () => {
 	describe("valid versions", () => {
@@ -23,7 +20,7 @@ describe("SemVer 2.0.0 Spec Compliance", () => {
 			const sv = parse(input);
 			// Parse the toString output — should produce equivalent version
 			const roundtripped = parse(sv.toString());
-			expect(SemVerOrder(sv, roundtripped)).toBe(0);
+			expect(SemVer.Order(sv, roundtripped)).toBe(0);
 		});
 	});
 
@@ -37,13 +34,13 @@ describe("SemVer 2.0.0 Spec Compliance", () => {
 		it.each(comparisonPairs)("%s < %s", (lower, higher) => {
 			const a = parse(lower);
 			const b = parse(higher);
-			expect(SemVerOrder(a, b)).toBeLessThan(0);
+			expect(SemVer.Order(a, b)).toBeLessThan(0);
 		});
 
 		it.each(comparisonPairs)("%s !== %s (not equal)", (lower, higher) => {
 			const a = parse(lower);
 			const b = parse(higher);
-			expect(SemVerOrder(a, b)).not.toBe(0);
+			expect(SemVer.Order(a, b)).not.toBe(0);
 		});
 	});
 });
@@ -52,15 +49,15 @@ describe("Range Satisfaction", () => {
 	it.each(rangeTests)("satisfies(%s, %s) === %s", (rangeStr, versionStr, expected) => {
 		const version = parse(versionStr);
 		const range = r(rangeStr);
-		expect(satisfies(version, range)).toBe(expected);
+		expect(Range.satisfies(version, range)).toBe(expected);
 	});
 });
 
 describe("Increment Operations", () => {
 	const bumpFns = {
-		major: bumpMajor,
-		minor: bumpMinor,
-		patch: bumpPatch,
+		major: SemVer.bump.major,
+		minor: SemVer.bump.minor,
+		patch: SemVer.bump.patch,
 	};
 
 	it.each(incrementTests)("bump %s by %s = %s", (initial, operation, expected) => {

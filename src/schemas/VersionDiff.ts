@@ -21,13 +21,13 @@ export const VersionDiffBase = Data.TaggedClass("VersionDiff");
  *
  * @example
  * ```typescript
- * import { diff, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* parseVersion("1.2.3");
- *   const b = yield* parseVersion("2.0.0");
- *   const d = diff(a, b);
+ *   const a = yield* SemVer.fromString("1.2.3");
+ *   const b = yield* SemVer.fromString("2.0.0");
+ *   const d = SemVer.diff(a, b);
  *   console.log(d.type);  // "major"
  *   console.log(d.major); // 1
  * });

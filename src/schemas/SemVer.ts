@@ -21,12 +21,11 @@ export const SemVerBase = Data.TaggedClass("SemVer");
  *
  * @example
  * ```typescript
- * import type { SemVer } from "semver-effect";
- * import { parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v: SemVer = yield* parseVersion("1.2.3-alpha.1+build.42");
+ *   const v = yield* SemVer.fromString("1.2.3-alpha.1+build.42");
  *   console.log(v.major);      // 1
  *   console.log(v.prerelease); // ["alpha", 1]
  *   console.log(v.build);      // ["build", "42"]

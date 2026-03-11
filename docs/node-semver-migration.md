@@ -46,10 +46,10 @@ console.log(version.major); // 1
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const version = yield* parseVersion("1.2.3");
+  const version = yield* SemVer.fromString("1.2.3");
   console.log(version.major); // 1
 });
 ```
@@ -70,16 +70,16 @@ semver.sort(["2.0.0", "1.0.0"]);  // ["1.0.0", "2.0.0"]
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, gt, compare, sort } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.2.3");
-  const b = yield* parseVersion("1.0.0");
-  const c = yield* parseVersion("2.0.0");
+  const a = yield* SemVer.fromString("1.2.3");
+  const b = yield* SemVer.fromString("1.0.0");
+  const c = yield* SemVer.fromString("2.0.0");
 
-  gt(a, b);              // true
-  compare(a, c);         // -1
-  sort([c, b]).map(String); // ["1.0.0", "2.0.0"]
+  SemVer.gt(a, b);              // true
+  SemVer.compare(a, c);         // -1
+  SemVer.sort([c, b]).map(String); // ["1.0.0", "2.0.0"]
 });
 ```
 
@@ -101,19 +101,19 @@ semver.maxSatisfying(["1.0.0", "1.5.0", "2.0.0"], "^1"); // "1.5.0"
 
 ```typescript
 import { Effect, Option } from "effect";
-import { parseVersion, parseRange, satisfies, maxSatisfying } from "semver-effect";
+import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.5.0");
-  const range = yield* parseRange("^1.2.0");
-  satisfies(v, range); // true
+  const v = yield* SemVer.fromString("1.5.0");
+  const range = yield* Range.fromString("^1.2.0");
+  Range.satisfies(v, range); // true
 
   const versions = yield* Effect.all([
-    parseVersion("1.0.0"),
-    parseVersion("1.5.0"),
-    parseVersion("2.0.0"),
+    SemVer.fromString("1.0.0"),
+    SemVer.fromString("1.5.0"),
+    SemVer.fromString("2.0.0"),
   ]);
-  const best = maxSatisfying(versions, range);
+  const best = Range.maxSatisfying(versions, range);
   console.log(Option.getOrNull(best)?.toString()); // "1.5.0"
 });
 ```
@@ -134,14 +134,14 @@ semver.inc("1.2.3", "prerelease", "beta"); // "1.2.4-beta.0"
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, bumpMajor, bumpMinor, bumpPrerelease } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.2.3");
+  const v = yield* SemVer.fromString("1.2.3");
 
-  bumpMajor(v).toString();             // "2.0.0"
-  bumpMinor(v).toString();             // "1.3.0"
-  bumpPrerelease(v, "beta").toString(); // "1.2.4-beta.0"
+  SemVer.bump.major(v).toString();             // "2.0.0"
+  SemVer.bump.minor(v).toString();             // "1.3.0"
+  SemVer.bump.prerelease(v, "beta").toString(); // "1.2.4-beta.0"
 });
 ```
 
@@ -159,12 +159,12 @@ semver.diff("1.0.0", "2.0.0"); // "major"
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, diff } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.0.0");
-  const b = yield* parseVersion("2.0.0");
-  const d = diff(a, b);
+  const a = yield* SemVer.fromString("1.0.0");
+  const b = yield* SemVer.fromString("2.0.0");
+  const d = SemVer.diff(a, b);
   console.log(d.type);  // "major"
   console.log(d.major); // 1 (also provides numeric deltas)
 });
@@ -181,8 +181,7 @@ parsing at the boundaries:
 
 ```typescript
 import { Effect } from "effect";
-import type { SemVer } from "semver-effect";
-import { parseVersion, gt } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 // Before: passing strings
 function isNewer(a: string, b: string): boolean {
@@ -190,12 +189,12 @@ function isNewer(a: string, b: string): boolean {
 }
 
 // After: parse at the boundary, pass SemVer objects internally
-const isNewer = (a: SemVer, b: SemVer): boolean => gt(a, b);
+const isNewer = (a: SemVer.SemVer, b: SemVer.SemVer): boolean => SemVer.gt(a, b);
 
 // At the entry point
 const program = Effect.gen(function* () {
-  const a = yield* parseVersion(userInputA);
-  const b = yield* parseVersion(userInputB);
+  const a = yield* SemVer.fromString(userInputA);
+  const b = yield* SemVer.fromString(userInputB);
   return isNewer(a, b);
 });
 ```
@@ -217,9 +216,9 @@ if (version === null) {
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
-const program = parseVersion(input).pipe(
+const program = SemVer.fromString(input).pipe(
   Effect.catchTag("InvalidVersionError", (err) => {
     console.error(err.message);
     return Effect.fail(err);
@@ -234,13 +233,13 @@ input may contain a `v` prefix, strip it before parsing:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const parseWithVPrefix = (input: string) => {
   const cleaned = input.startsWith("v") || input.startsWith("V")
     ? input.slice(1)
     : input;
-  return parseVersion(cleaned);
+  return SemVer.fromString(cleaned);
 };
 ```
 
@@ -282,14 +281,14 @@ accept the `v` prefix.
 ### No `valid()` Returning a String
 
 node-semver's `valid()` returns the cleaned version string or `null`.
-In `semver-effect`, use `parseVersion` and call `.toString()`:
+In `semver-effect`, use `SemVer.fromString` and call `.toString()`:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const valid = (input: string) =>
-  parseVersion(input).pipe(
+  SemVer.fromString(input).pipe(
     Effect.map((v) => v.toString()),
     Effect.orElseSucceed(() => null),
   );
@@ -298,13 +297,13 @@ const valid = (input: string) =>
 ### No `Range.test()` Method
 
 node-semver `Range` objects have a `.test(version)` method.
-In `semver-effect`, use the `satisfies` function:
+In `semver-effect`, use the `Range.satisfies` function:
 
 ```typescript
-import { satisfies } from "semver-effect";
+import { Range } from "semver-effect";
 
 // node-semver:  range.test(version)
-// semver-effect: satisfies(version, range)
+// semver-effect: Range.satisfies(version, range)
 ```
 
 ### No `outside()` or `gtr()` / `ltr()`
@@ -315,7 +314,7 @@ primitives:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, parseRange, satisfies, gt, lt, sort, filter } from "semver-effect";
+import { SemVer, Range } from "semver-effect";
 
 // Check if version is greater than all versions in a range
 // by checking it doesn't satisfy and is greater than the max satisfying
@@ -329,13 +328,13 @@ or fails if the ranges are incompatible:
 
 ```typescript
 import { Effect } from "effect";
-import { parseRange, intersect } from "semver-effect";
+import { Range } from "semver-effect";
 
 const doRangesOverlap = (a: string, b: string) =>
   Effect.gen(function* () {
-    const rangeA = yield* parseRange(a);
-    const rangeB = yield* parseRange(b);
-    return yield* intersect(rangeA, rangeB);
+    const rangeA = yield* Range.fromString(a);
+    const rangeB = yield* Range.fromString(b);
+    return yield* Range.intersect(rangeA, rangeB);
   }).pipe(
     Effect.map(() => true),
     Effect.catchTag("UnsatisfiableConstraintError", () => Effect.succeed(false)),

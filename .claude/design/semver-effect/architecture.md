@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-11
+last-synced: 2026-03-11
 completeness: 95
 related:
   - data-model.md
@@ -67,8 +67,8 @@ immutable Data.TaggedClass instances.
 ### Implementation Status
 
 The implementation is **complete**. All core modules are implemented, tested,
-and working. The package has 476 tests across 19 test files with high branch
-coverage.
+and working. The package has 650 tests across 16 test files with high branch
+coverage. The public API uses an Effect-idiomatic namespaced module pattern.
 
 #### Component 1: Core Data Types (schemas/)
 
@@ -99,9 +99,9 @@ coverage.
 
 **Responsibilities:**
 
-- parseVersion (exported as `parseVersion`): string to SemVer with precise error positions
-- parseRange: string to Range with desugaring and normalization
-- parseComparator (exported as `parseComparator`): string to Comparator
+- parseVersion (exposed as `SemVer.fromString`): string to SemVer with precise error positions
+- parseRange (exposed as `Range.fromString`): string to Range with desugaring and normalization
+- parseComparator (exposed as `Comparator.fromString`): string to Comparator
 - Hand-written recursive descent PEG parser, character-by-character walk
 - All syntactic sugar desugared during parsing
 
@@ -115,13 +115,18 @@ coverage.
 
 **Responsibilities:**
 
-- Comparison: compare, equal, gt, gte, lt, lte, neq, sort, rsort, max, min
-- Matching: satisfies, filter, maxSatisfying, minSatisfying
-- Algebra: intersect, union, simplify, isSubset, equivalent
-- Diffing: diff (produces VersionDiff)
-- Bumping: bumpMajor, bumpMinor, bumpPatch, bumpPrerelease, bumpRelease
-- Ordering: SemVerOrder, SemVerOrderWithBuild
-- Pretty-printing: prettyPrint via Match.exhaustive
+- Comparison: `SemVer.compare`, `SemVer.equal`, `SemVer.gt`, `SemVer.gte`,
+  `SemVer.lt`, `SemVer.lte`, `SemVer.neq`, `SemVer.sort`, `SemVer.rsort`,
+  `SemVer.max`, `SemVer.min`
+- Matching: `Range.satisfies`, `Range.filter`, `Range.maxSatisfying`,
+  `Range.minSatisfying`
+- Algebra: `Range.intersect`, `Range.union`, `Range.simplify`,
+  `Range.isSubset`, `Range.equivalent`
+- Diffing: `SemVer.diff` (produces VersionDiff)
+- Bumping: `SemVer.bump.major`, `SemVer.bump.minor`, `SemVer.bump.patch`,
+  `SemVer.bump.prerelease`, `SemVer.bump.release`
+- Ordering: `SemVer.Order`, `SemVer.OrderWithBuild`, `SemVer.Equivalence`
+- Pretty-printing: `PrettyPrint.prettyPrint` via Match.exhaustive
 
 #### Component 4: VersionCache (services/ + layers/)
 
@@ -168,30 +173,32 @@ coverage.
 ### Architecture Diagram
 
 ```text
-                     Public API (src/index.ts -- only barrel)
+               Public API (src/index.ts -- only barrel)
                               |
-       +-------------+-------+-------+-------------+
-       |              |               |             |
-   schemas/       services/       layers/       errors/
-   SemVer.ts      SemVerParser.ts SemVerParser  InvalidVersionError.ts
-   Range.ts       VersionCache.ts  Live.ts      InvalidRangeError.ts
-   Comparator.ts  VersionFetcher  VersionCache  InvalidComparatorError.ts
-   VersionDiff.ts  (interface +    Live.ts      InvalidPrereleaseError.ts
-       |            GenericTag)                  UnsatisfiedRangeError.ts
-       |                |                       VersionNotFoundError.ts
-       |            utils/                      EmptyCacheError.ts
-       |            grammar.ts                  UnsatisfiableConstraintError.ts
-       |            desugar.ts                  InvalidBumpError.ts
-       |            normalize.ts                VersionFetchError.ts
-       |            compare.ts
-       |            matching.ts
-       |            algebra.ts
-       |            diff.ts
-       |            bump.ts
-       |            order.ts
-       |            parseRange.ts
-       |            prettyPrint.ts
-       |
+    +-----------+-------------+-------------+-----------+
+    |           |             |             |           |
+  Namespace   Namespace    Namespace    Flat exports  Flat exports
+  modules     modules     modules     (errors)     (services/layers)
+    |           |             |
+  SemVer.ts  Range.ts    Comparator.ts  PrettyPrint.ts  VersionDiff.ts
+    |           |             |
+    |  (aggregation modules -- collect from schemas/ and utils/)
+    |           |             |
+    +-----+-----+-----+------+
+          |           |
+      schemas/     utils/              services/       layers/
+      SemVer.ts    grammar.ts          SemVerParser.ts SemVerParserLive.ts
+      Range.ts     desugar.ts          VersionCache.ts VersionCacheLive.ts
+      Comparator   normalize.ts        VersionFetcher
+      VersionDiff  compare.ts
+                   matching.ts      errors/
+                   algebra.ts       InvalidVersionError.ts
+                   diff.ts          InvalidRangeError.ts
+                   bump.ts          InvalidComparatorError.ts
+                   order.ts         (... 7 more)
+                   parseRange.ts
+                   prettyPrint.ts
+
   Data.TaggedClass (split base pattern)
   Equal + Order + Hash + Inspectable
 ```
@@ -289,22 +296,35 @@ equality and hashing per the SemVer spec.
   reference instead of an un-nameable inline call. The `*Base` export is
   marked `@internal`.
 
-#### Pattern 3: No Barrel Files (Single Index)
+#### Pattern 3: Namespaced Module Aggregation
+
+- **Where used:** `src/SemVer.ts`, `src/Range.ts`, `src/Comparator.ts`,
+  `src/PrettyPrint.ts`, `src/VersionDiff.ts`
+- **Why used:** Matches Effect's own API pattern (DateTime, Duration, etc.)
+  where all operations for a type are accessed through a single namespace
+- **Implementation:** Each aggregation module re-exports the class/base from
+  `schemas/`, re-exports operations from `utils/`, and adds convenience
+  constructors (`make`), constants (`ZERO`, `any`), Schema transforms
+  (`Instance`, `FromString`), and Effect instances (`Order`, `Equivalence`).
+  The barrel (`src/index.ts`) uses `export * as SemVer from "./SemVer.js"`.
+  No standalone function exports exist in the barrel.
+
+#### Pattern 4: No Barrel Files in Subdirectories
 
 - **Where used:** Entire codebase
 - **Why used:** Avoids circular imports, improves tree-shaking
-- **Implementation:** Only `src/index.ts` is a barrel. All other files
-  import directly from source paths. No `schemas/index.ts`, no
-  `errors/index.ts`.
+- **Implementation:** Only `src/index.ts` is a barrel. The top-level
+  aggregation modules are not barrels for their subdirectories; they are
+  curated namespace surfaces. No `schemas/index.ts`, no `errors/index.ts`.
 
-#### Pattern 4: Dual API (data-first + data-last)
+#### Pattern 5: Dual API (data-first + data-last)
 
 - **Where used:** All binary pure operations (compare, satisfies, filter, etc.)
 - **Why used:** Effect ecosystem convention, pipe ergonomics
 - **Implementation:** Uses `Function.dual(2, ...)` for all binary operations.
-  Enables both `satisfies(version, range)` and `pipe(version, satisfies(range))`.
+  Enables both `SemVer.gt(a, b)` and `pipe(a, SemVer.gt(b))`.
 
-#### Pattern 5: Direct Construction (No Runtime Validation)
+#### Pattern 6: Direct Construction (No Runtime Validation)
 
 - **Where used:** Parser output, bump operations, desugar, normalize
 - **Why it works:** Data.TaggedClass constructors take a single object
@@ -323,7 +343,12 @@ equality and hashing per the SemVer spec.
 
 ```text
 src/
-├── index.ts                  (only barrel export)
+├── index.ts                  (only barrel -- namespace re-exports + flat error/service exports)
+├── SemVer.ts                 (namespace aggregation module)
+├── Range.ts                  (namespace aggregation module)
+├── Comparator.ts             (namespace aggregation module)
+├── PrettyPrint.ts            (namespace aggregation module)
+├── VersionDiff.ts            (namespace aggregation module)
 ├── schemas/
 │   ├── SemVer.ts
 │   ├── Comparator.ts
@@ -384,14 +409,22 @@ __test__/                     (adjacent to src/, not inside it)
 
 **Conventions:**
 
-- **No barrel files** except `src/index.ts` -- all imports go directly to
-  source files
+- **Namespaced module pattern** -- top-level aggregation modules (`SemVer.ts`,
+  `Range.ts`, `Comparator.ts`, `PrettyPrint.ts`, `VersionDiff.ts`) collect
+  operations from `schemas/` and `utils/` into namespace modules, matching
+  Effect's own pattern (e.g., `DateTime`, `Duration`). Users access
+  functionality through these namespaces: `SemVer.gt()`, `Range.satisfies()`,
+  `SemVer.bump.major()`.
+- **Barrel uses `export * as`** -- `src/index.ts` re-exports namespace modules
+  via `export * as SemVer from "./SemVer.js"` and uses flat named exports only
+  for errors, services, and layers. No standalone function exports.
 - **One concern per file** -- each schema, error, service gets its own file
 - **`schemas/`** -- Data.TaggedClass types (data model, split base pattern)
 - **`errors/`** -- TaggedError subclasses (one per file, split base pattern)
 - **`services/`** -- Service interfaces + GenericTag (no implementation)
 - **`layers/`** -- Layer implementations (the "Live" variants)
-- **`utils/`** -- Pure helper functions and internal logic
+- **`utils/`** -- Pure helper functions and internal logic (internal; not
+  directly exported from index.ts)
 - **Tests** live in `__test__/` (top-level, adjacent to `src/`); fixtures in
   `__test__/fixtures/`
 
@@ -415,8 +448,8 @@ All errors extend TaggedError and flow through Effect's typed error channel:
 String input
      |
      v
-parseVersion() / parseRange() / parseComparator()
-     |  (convenience functions delegating to grammar.ts)
+SemVer.fromString() / Range.fromString() / Comparator.fromString()
+     |  (namespace methods delegating to grammar.ts / parseRange.ts)
      v
 grammar.ts (recursive descent, char by char)
      |
@@ -468,11 +501,17 @@ during parsing, before any matching occurs.
 ### Effect Ecosystem Integration
 
 - **Effect.Data:** Data types use Data.TaggedClass for tagged immutability
-- **Effect.Order:** SemVer exposes Order instance for Array.sort, SortedSet
+- **Effect.Order:** `SemVer.Order` and `SemVer.OrderWithBuild` for Array.sort,
+  SortedSet
+- **Effect.Equivalence:** `SemVer.Equivalence` for spec-compliant equality
 - **Effect.Equal/Hash:** SemVer implements custom Equal (ignoring build metadata
   per spec) and Hash (excluding build from hash computation)
+- **Effect.Schema:** Each namespace module provides `Instance`
+  (`Schema.instanceOf`) and `FromString` (`Schema.transformOrFail`) schemas
+  for integration with Schema.Config, Schema.decodeUnknownSync, etc.
 - **Inspectable:** SemVer implements toString, toJSON, and nodejs.util.inspect.custom
-- **Effect.Match:** prettyPrint uses Match.exhaustive for type-safe printing
+- **Effect.Match:** PrettyPrint.prettyPrint uses Match.exhaustive for type-safe
+  printing
 - **Function.dual:** All binary pure operations support data-first and data-last
 
 ### Build System
@@ -492,7 +531,7 @@ during parsing, before any matching occurs.
 
 **Framework:** Vitest with v8 coverage, forks pool for Effect-TS compatibility.
 
-**Scale:** 476 tests across 19 test files (~3920 lines of test code).
+**Scale:** 650 tests across 16 test files (~3920 lines of test code).
 
 **Test files:**
 
@@ -547,6 +586,6 @@ vectors for versions, ranges, and increments.
 
 ---
 
-**Document Status:** Current -- reflects the complete implemented architecture.
-All components are implemented, tested, and working with 476 tests across 19
-test files.
+**Document Status:** Current -- reflects the complete implemented architecture
+with Effect-idiomatic namespaced module pattern. All components are
+implemented, tested, and working with 650 tests across 16 test files.

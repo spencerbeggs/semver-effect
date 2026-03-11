@@ -202,12 +202,11 @@ const parseBuild = makeParseBuild(parseBuildIdentifier);
  *
  * @example
  * ```typescript
- * import type { SemVer } from "semver-effect";
- * import { parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v: SemVer = yield* parseVersion("1.2.3-beta.1+build.42");
+ *   const v = yield* SemVer.fromString("1.2.3-beta.1+build.42");
  *   console.log(v.toString()); // "1.2.3-beta.1+build.42"
  * });
  * ```
@@ -530,11 +529,11 @@ export const parseRangeSet = (raw: string): Effect.Effect<Range, InvalidRangeErr
  *
  * @example
  * ```typescript
- * import { parseComparator } from "semver-effect";
+ * import { Comparator } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const comp = yield* parseComparator(">=1.0.0");
+ *   const comp = yield* Comparator.fromString(">=1.0.0");
  *   console.log(comp.operator); // ">="
  *   console.log(comp.version.toString()); // "1.0.0"
  * });

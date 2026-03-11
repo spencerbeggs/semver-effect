@@ -1,36 +1,21 @@
 import { inspect } from "node:util";
 import { Effect, Option } from "effect";
 import { describe, expect, it } from "vitest";
-import { Comparator } from "../src/schemas/Comparator.js";
-import { Range } from "../src/schemas/Range.js";
-import { SemVer } from "../src/schemas/SemVer.js";
-import { equivalent, intersect, isSubset, simplify, union } from "../src/utils/algebra.js";
-import { bumpPrerelease } from "../src/utils/bump.js";
-import { parseRangeSet, parseSingleComparator, parseValidSemVer } from "../src/utils/grammar.js";
-import { minSatisfying, satisfies } from "../src/utils/matching.js";
+import * as Comparator from "../src/Comparator.js";
+import * as Range from "../src/Range.js";
+import * as SemVer from "../src/SemVer.js";
+import { parseRangeSet, parseSingleComparator } from "../src/utils/grammar.js";
 import { normalizeRange } from "../src/utils/normalize.js";
-import { SemVerOrderWithBuild } from "../src/utils/order.js";
 
-const v = (
-	major: number,
-	minor: number,
-	patch: number,
-	prerelease: ReadonlyArray<string | number> = [],
-	build: ReadonlyArray<string> = [],
-) =>
-	new SemVer({
-		major,
-		minor,
-		patch,
-		prerelease: [...prerelease],
-		build: [...build],
-	});
+const v = SemVer.make;
 
-const comp = (op: "=" | ">" | ">=" | "<" | "<=", ver: SemVer) => new Comparator({ operator: op, version: ver });
+const comp = (op: "=" | ">" | ">=" | "<" | "<=", ver: SemVer.SemVer) =>
+	new Comparator.Comparator({ operator: op, version: ver });
 
-const range = (...sets: ReadonlyArray<ReadonlyArray<Comparator>>) => new Range({ sets: sets.map((s) => [...s]) });
+const range = (...sets: ReadonlyArray<ReadonlyArray<Comparator.Comparator>>) =>
+	new Range.Range({ sets: sets.map((s) => [...s]) });
 
-const r = (input: string) => Effect.runSync(Effect.map(parseRangeSet(input), normalizeRange));
+const r = (input: string) => Effect.runSync(Range.fromString(input));
 
 // ---------------------------------------------------------------------------
 // 1. normalize.ts — operator weight sorting & duplicate removal
@@ -208,49 +193,49 @@ describe("algebra branches", () => {
 	it("intersect fails when = conflicts with > bound", () => {
 		const a = range([comp("=", v(1, 0, 0))]);
 		const b = range([comp(">", v(1, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: = conflicts with < bound
 	it("intersect fails when = conflicts with < bound", () => {
 		const a = range([comp("=", v(2, 0, 0))]);
 		const b = range([comp("<", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: = equals > version (cmp<=0 means false)
 	it("intersect fails when = version equals > version", () => {
 		const a = range([comp("=", v(1, 0, 0))]);
 		const b = range([comp(">", v(1, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: = lower than >= version
 	it("intersect fails when = version below >= bound", () => {
 		const a = range([comp("=", v(1, 0, 0))]);
 		const b = range([comp(">=", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: = above <= version
 	it("intersect fails when = version above <= bound", () => {
 		const a = range([comp("=", v(3, 0, 0))]);
 		const b = range([comp("<=", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: two = comparators that differ
 	it("intersect fails when two = comparators differ", () => {
 		const a = range([comp("=", v(1, 0, 0))]);
 		const b = range([comp("=", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: >= and <= that work (satisfiable)
 	it("intersect succeeds when >= <= are compatible", () => {
 		const a = range([comp(">=", v(1, 0, 0))]);
 		const b = range([comp("<=", v(2, 0, 0))]);
-		const result = Effect.runSync(intersect(a, b));
+		const result = Effect.runSync(Range.intersect(a, b));
 		expect(result.sets).toHaveLength(1);
 		expect(result.sets[0]).toHaveLength(2);
 	});
@@ -259,35 +244,35 @@ describe("algebra branches", () => {
 	it("intersect fails when > version equals <= version", () => {
 		const a = range([comp(">", v(1, 0, 0))]);
 		const b = range([comp("<=", v(1, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: >= and < where >= equals < (unsatisfiable)
 	it("intersect fails when >= version equals < version", () => {
 		const a = range([comp(">=", v(2, 0, 0))]);
 		const b = range([comp("<", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: > and < where > > < (unsatisfiable)
 	it("intersect fails when > version above < version", () => {
 		const a = range([comp(">", v(3, 0, 0))]);
 		const b = range([comp("<", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// isSetSatisfiable: >= and <= where >= > <= (unsatisfiable)
 	it("intersect fails when >= above <=", () => {
 		const a = range([comp(">=", v(3, 0, 0))]);
 		const b = range([comp("<=", v(2, 0, 0))]);
-		expect(() => Effect.runSync(intersect(a, b))).toThrow();
+		expect(() => Effect.runSync(Range.intersect(a, b))).toThrow();
 	});
 
 	// intersect with multi-set ranges producing valid merge
 	it("intersect with multi-set ranges keeps satisfiable combinations", () => {
 		const a = range([comp(">=", v(1, 0, 0)), comp("<", v(2, 0, 0))], [comp(">=", v(3, 0, 0))]);
 		const b = range([comp(">=", v(1, 5, 0))]);
-		const result = Effect.runSync(intersect(a, b));
+		const result = Effect.runSync(Range.intersect(a, b));
 		expect(result.sets.length).toBeGreaterThanOrEqual(1);
 	});
 
@@ -295,90 +280,90 @@ describe("algebra branches", () => {
 	it("isSubset: >= implied by >=", () => {
 		const sub = range([comp(">=", v(2, 0, 0)), comp("<", v(3, 0, 0))]);
 		const sup = range([comp(">=", v(1, 0, 0)), comp("<", v(3, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: > implied by > with higher version
 	it("isSubset: > implied by >", () => {
 		const sub = range([comp(">", v(2, 0, 0))]);
 		const sup = range([comp(">", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: > implied by >= with higher version
 	it("isSubset: > implied by >=", () => {
 		const sub = range([comp(">", v(2, 0, 0))]);
 		const sup = range([comp(">=", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: <= implied by <=
 	it("isSubset: <= implied by <=", () => {
 		const sub = range([comp("<=", v(2, 0, 0))]);
 		const sup = range([comp("<=", v(3, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: < implied by <
 	it("isSubset: < implied by <", () => {
 		const sub = range([comp("<", v(2, 0, 0))]);
 		const sup = range([comp("<", v(3, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: < implied by <=
 	it("isSubset: < implied by <=", () => {
 		const sub = range([comp("<", v(2, 0, 0))]);
 		const sup = range([comp("<=", v(3, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: = implied by =
 	it("isSubset: = implied by =", () => {
 		const sub = range([comp("=", v(1, 0, 0))]);
 		const sup = range([comp("=", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: = implied by >=
 	it("isSubset: >= implied by = at same version", () => {
 		const sub = range([comp("=", v(1, 0, 0))]);
 		const sup = range([comp(">=", v(1, 0, 0)), comp("<=", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: >= with = where cmp>=0
 	it("isSubset: >= implied by = when = version >= comp version", () => {
 		const sub = range([comp("=", v(2, 0, 0))]);
 		const sup = range([comp(">=", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: > with = where cmp>0
 	it("isSubset: > implied by = when = version > comp version", () => {
 		const sub = range([comp("=", v(2, 0, 0))]);
 		const sup = range([comp(">", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: <= with = where cmp<=0
 	it("isSubset: <= implied by = when = version <= comp version", () => {
 		const sub = range([comp("=", v(1, 0, 0))]);
 		const sup = range([comp("<=", v(2, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// isComparatorImplied: < with = where cmp<0
 	it("isSubset: < implied by = when = version < comp version", () => {
 		const sub = range([comp("=", v(1, 0, 0))]);
 		const sup = range([comp("<", v(2, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(true);
+		expect(Range.isSubset(sub, sup)).toBe(true);
 	});
 
 	// equivalent
 	it("equivalent returns true for identical ranges", () => {
 		const a = range([comp(">=", v(1, 0, 0)), comp("<", v(2, 0, 0))]);
-		expect(equivalent(a, a)).toBe(true);
+		expect(Range.equivalent(a, a)).toBe(true);
 	});
 
 	// simplify with redundant sets
@@ -386,14 +371,14 @@ describe("algebra branches", () => {
 		// Set A: >=1.0.0 <3.0.0 — wider
 		// Set B: >=1.0.0 <2.0.0 — narrower, implied by A
 		const a = range([comp(">=", v(1, 0, 0)), comp("<", v(3, 0, 0))], [comp(">=", v(1, 0, 0)), comp("<", v(2, 0, 0))]);
-		const result = simplify(a);
+		const result = Range.simplify(a);
 		expect(result.sets).toHaveLength(1);
 	});
 
 	// simplify when no sets are redundant returns all
 	it("simplify keeps non-redundant sets", () => {
 		const a = range([comp(">=", v(1, 0, 0)), comp("<", v(2, 0, 0))], [comp(">=", v(3, 0, 0)), comp("<", v(4, 0, 0))]);
-		const result = simplify(a);
+		const result = Range.simplify(a);
 		expect(result.sets).toHaveLength(2);
 	});
 
@@ -401,7 +386,7 @@ describe("algebra branches", () => {
 	it("union combines range sets", () => {
 		const a = range([comp(">=", v(1, 0, 0))]);
 		const b = range([comp("<", v(2, 0, 0))]);
-		const result = union(a, b);
+		const result = Range.union(a, b);
 		expect(result.sets).toHaveLength(2);
 	});
 
@@ -409,20 +394,20 @@ describe("algebra branches", () => {
 	it("isSubset supports data-last (pipe) style", () => {
 		const sub = range([comp(">=", v(1, 0, 0)), comp("<", v(2, 0, 0))]);
 		const sup = range([comp(">=", v(0, 0, 0))]);
-		const check = isSubset(sup);
+		const check = Range.isSubset(sup);
 		expect(check(sub)).toBe(true);
 	});
 
 	it("union supports data-last style", () => {
 		const a = range([comp(">=", v(1, 0, 0))]);
 		const b = range([comp("<", v(2, 0, 0))]);
-		const result = union(b)(a);
+		const result = Range.union(b)(a);
 		expect(result.sets).toHaveLength(2);
 	});
 
 	it("equivalent supports data-last style", () => {
 		const a = range([comp(">=", v(1, 0, 0))]);
-		const check = equivalent(a);
+		const check = Range.equivalent(a);
 		expect(check(a)).toBe(true);
 	});
 });
@@ -448,51 +433,51 @@ describe("grammar branches", () => {
 
 	// Version at large numbers
 	it("parses version with large numbers", () => {
-		const sv = Effect.runSync(parseValidSemVer("999.999.999"));
+		const sv = Effect.runSync(SemVer.fromString("999.999.999"));
 		expect(sv.major).toBe(999);
 	});
 
 	// Empty string version
 	it("rejects empty version string", () => {
-		expect(() => Effect.runSync(parseValidSemVer(""))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString(""))).toThrow();
 	});
 
 	// v-prefix
 	it("rejects v-prefix", () => {
-		expect(() => Effect.runSync(parseValidSemVer("v1.0.0"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("v1.0.0"))).toThrow();
 	});
 
 	// V-prefix
 	it("rejects V-prefix", () => {
-		expect(() => Effect.runSync(parseValidSemVer("V1.0.0"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("V1.0.0"))).toThrow();
 	});
 
 	// = prefix
 	it("rejects = prefix on version", () => {
-		expect(() => Effect.runSync(parseValidSemVer("=1.0.0"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("=1.0.0"))).toThrow();
 	});
 
 	// Leading zero
 	it("rejects leading zero in major", () => {
-		expect(() => Effect.runSync(parseValidSemVer("01.0.0"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("01.0.0"))).toThrow();
 	});
 
 	it("rejects leading zero in numeric prerelease", () => {
-		expect(() => Effect.runSync(parseValidSemVer("1.0.0-01"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("1.0.0-01"))).toThrow();
 	});
 
 	// Missing components
 	it("rejects version with only major", () => {
-		expect(() => Effect.runSync(parseValidSemVer("1"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("1"))).toThrow();
 	});
 
 	it("rejects version with only major.minor", () => {
-		expect(() => Effect.runSync(parseValidSemVer("1.0"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("1.0"))).toThrow();
 	});
 
 	// Extra content after valid version
 	it("rejects extra content after version", () => {
-		expect(() => Effect.runSync(parseValidSemVer("1.0.0.0"))).toThrow();
+		expect(() => Effect.runSync(SemVer.fromString("1.0.0.0"))).toThrow();
 	});
 
 	// Empty range string parses as match-all
@@ -509,31 +494,31 @@ describe("grammar branches", () => {
 
 	// parseSingleComparator
 	it("parseSingleComparator parses valid comparator", () => {
-		const c = Effect.runSync(parseSingleComparator(">=1.2.3"));
+		const c = Effect.runSync(Comparator.fromString(">=1.2.3"));
 		expect(c.operator).toBe(">=");
 		expect(c.version.major).toBe(1);
 	});
 
 	it("parseSingleComparator rejects empty string", () => {
-		expect(() => Effect.runSync(parseSingleComparator(""))).toThrow();
+		expect(() => Effect.runSync(Comparator.fromString(""))).toThrow();
 	});
 
 	it("parseSingleComparator rejects double operator >>", () => {
-		expect(() => Effect.runSync(parseSingleComparator(">>1.0.0"))).toThrow();
+		expect(() => Effect.runSync(Comparator.fromString(">>1.0.0"))).toThrow();
 	});
 
 	it("parseSingleComparator parses with no operator as =", () => {
-		const c = Effect.runSync(parseSingleComparator("1.2.3"));
+		const c = Effect.runSync(Comparator.fromString("1.2.3"));
 		expect(c.operator).toBe("=");
 	});
 
 	it("parseSingleComparator parses with prerelease", () => {
-		const c = Effect.runSync(parseSingleComparator(">=1.0.0-alpha.1"));
+		const c = Effect.runSync(Comparator.fromString(">=1.0.0-alpha.1"));
 		expect(c.version.prerelease).toEqual(["alpha", 1]);
 	});
 
 	it("parseSingleComparator parses with build", () => {
-		const c = Effect.runSync(parseSingleComparator(">=1.0.0+build.123"));
+		const c = Effect.runSync(Comparator.fromString(">=1.0.0+build.123"));
 		expect(c.version.build).toEqual(["build", "123"]);
 	});
 
@@ -547,12 +532,12 @@ describe("grammar branches", () => {
 
 	// Tilde rejects ~>
 	it("range rejects ~> (Ruby style)", () => {
-		expect(() => Effect.runSync(parseRangeSet("~>1.0.0"))).toThrow();
+		expect(() => Effect.runSync(Range.fromString("~>1.0.0"))).toThrow();
 	});
 
 	// Range with trailing content
 	it("range rejects trailing content", () => {
-		expect(() => Effect.runSync(parseRangeSet("1.0.0 invalid!"))).toThrow();
+		expect(() => Effect.runSync(Range.fromString("1.0.0 invalid!"))).toThrow();
 	});
 });
 
@@ -564,49 +549,49 @@ describe("SemVerOrderWithBuild", () => {
 	it("no build < has build", () => {
 		const a = v(1, 0, 0);
 		const b = v(1, 0, 0, [], ["build"]);
-		expect(SemVerOrderWithBuild(a, b)).toBe(-1);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(-1);
 	});
 
 	it("has build > no build", () => {
 		const a = v(1, 0, 0, [], ["build"]);
 		const b = v(1, 0, 0);
-		expect(SemVerOrderWithBuild(a, b)).toBe(1);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(1);
 	});
 
 	it("lexicographic build comparison", () => {
 		const a = v(1, 0, 0, [], ["aaa"]);
 		const b = v(1, 0, 0, [], ["bbb"]);
-		expect(SemVerOrderWithBuild(a, b)).toBe(-1);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(-1);
 	});
 
 	it("reverse lexicographic build comparison", () => {
 		const a = v(1, 0, 0, [], ["bbb"]);
 		const b = v(1, 0, 0, [], ["aaa"]);
-		expect(SemVerOrderWithBuild(a, b)).toBe(1);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(1);
 	});
 
 	it("shorter build < longer build when prefix matches", () => {
 		const a = v(1, 0, 0, [], ["build"]);
 		const b = v(1, 0, 0, [], ["build", "extra"]);
-		expect(SemVerOrderWithBuild(a, b)).toBe(-1);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(-1);
 	});
 
 	it("longer build > shorter build when prefix matches", () => {
 		const a = v(1, 0, 0, [], ["build", "extra"]);
 		const b = v(1, 0, 0, [], ["build"]);
-		expect(SemVerOrderWithBuild(a, b)).toBe(1);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(1);
 	});
 
 	it("equal builds return 0", () => {
 		const a = v(1, 0, 0, [], ["build"]);
 		const b = v(1, 0, 0, [], ["build"]);
-		expect(SemVerOrderWithBuild(a, b)).toBe(0);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(0);
 	});
 
 	it("both no builds returns 0", () => {
 		const a = v(1, 0, 0);
 		const b = v(1, 0, 0);
-		expect(SemVerOrderWithBuild(a, b)).toBe(0);
+		expect(SemVer.OrderWithBuild(a, b)).toBe(0);
 	});
 });
 
@@ -617,21 +602,21 @@ describe("SemVerOrderWithBuild", () => {
 describe("matching branches", () => {
 	it("empty comparator set matches all versions", () => {
 		const emptyRange = range([]);
-		expect(satisfies(v(1, 0, 0), emptyRange)).toBe(true);
-		expect(satisfies(v(999, 0, 0), emptyRange)).toBe(true);
+		expect(Range.satisfies(v(1, 0, 0), emptyRange)).toBe(true);
+		expect(Range.satisfies(v(999, 0, 0), emptyRange)).toBe(true);
 	});
 
 	it("prerelease version rejected when no comparator has matching tuple", () => {
 		// Range >=1.0.0 <2.0.0 does NOT have prerelease comparators
 		const parsed = r(">=1.0.0 <2.0.0");
 		// 1.5.0-alpha has prerelease, no comparator shares [1,5,0] tuple
-		expect(satisfies(v(1, 5, 0, ["alpha"]), parsed)).toBe(false);
+		expect(Range.satisfies(v(1, 5, 0, ["alpha"]), parsed)).toBe(false);
 	});
 
 	it("prerelease version accepted when comparator has matching tuple", () => {
 		// >=1.0.0-alpha <1.0.1 — comparator has [1,0,0] tuple with prerelease
 		const parsed = r(">=1.0.0-alpha <1.0.1");
-		expect(satisfies(v(1, 0, 0, ["beta"]), parsed)).toBe(true);
+		expect(Range.satisfies(v(1, 0, 0, ["beta"]), parsed)).toBe(true);
 	});
 });
 
@@ -641,32 +626,32 @@ describe("matching branches", () => {
 
 describe("bumpPrerelease coverage", () => {
 	it("id provided, no existing prerelease", () => {
-		const result = bumpPrerelease(v(1, 0, 0), "beta");
+		const result = SemVer.bump.prerelease(v(1, 0, 0), "beta");
 		expect(result.toString()).toBe("1.0.1-beta.0");
 	});
 
-	it("existing numeric prerelease, no id → increment", () => {
-		const result = bumpPrerelease(v(1, 0, 0, [0]));
+	it("existing numeric prerelease, no id -> increment", () => {
+		const result = SemVer.bump.prerelease(v(1, 0, 0, [0]));
 		expect(result.toString()).toBe("1.0.0-1");
 	});
 
-	it("current prefix is numeric → null !== 'alpha' → reset", () => {
-		const result = bumpPrerelease(v(1, 0, 0, [0]), "alpha");
+	it("current prefix is numeric -> null !== 'alpha' -> reset", () => {
+		const result = SemVer.bump.prerelease(v(1, 0, 0, [0]), "alpha");
 		expect(result.toString()).toBe("1.0.0-alpha.0");
 	});
 
-	it("different string prefix → reset", () => {
-		const result = bumpPrerelease(v(1, 0, 0, ["alpha", 1]), "beta");
+	it("different string prefix -> reset", () => {
+		const result = SemVer.bump.prerelease(v(1, 0, 0, ["alpha", 1]), "beta");
 		expect(result.toString()).toBe("1.0.0-beta.0");
 	});
 
-	it("same prefix → increment", () => {
-		const result = bumpPrerelease(v(1, 0, 0, ["alpha", 1]), "alpha");
+	it("same prefix -> increment", () => {
+		const result = SemVer.bump.prerelease(v(1, 0, 0, ["alpha", 1]), "alpha");
 		expect(result.toString()).toBe("1.0.0-alpha.2");
 	});
 
-	it("last is string → append 0", () => {
-		const result = bumpPrerelease(v(1, 0, 0, ["alpha"]));
+	it("last is string -> append 0", () => {
+		const result = SemVer.bump.prerelease(v(1, 0, 0, ["alpha"]));
 		expect(result.toString()).toBe("1.0.0-alpha.0");
 	});
 });
@@ -679,13 +664,13 @@ describe("algebra isComparatorImplied fallthrough", () => {
 	it("isSubset false when > not implied", () => {
 		const sub = range([comp("<=", v(1, 0, 0))]);
 		const sup = range([comp(">", v(2, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(false);
+		expect(Range.isSubset(sub, sup)).toBe(false);
 	});
 
 	it("isSubset false when <= not implied", () => {
 		const sub = range([comp(">=", v(3, 0, 0))]);
 		const sup = range([comp("<=", v(1, 0, 0))]);
-		expect(isSubset(sub, sup)).toBe(false);
+		expect(Range.isSubset(sub, sup)).toBe(false);
 	});
 });
 
@@ -756,7 +741,7 @@ describe("minSatisfying coverage", () => {
 	it("minSatisfying returns the lowest matching version", () => {
 		const versions = [v(1, 0, 0), v(2, 0, 0), v(3, 0, 0)];
 		const parsed = r(">=1.0.0");
-		const result = minSatisfying(versions, parsed);
+		const result = Range.minSatisfying(versions, parsed);
 		expect(Option.isSome(result)).toBe(true);
 		expect(String(Option.getOrThrow(result))).toBe("1.0.0");
 	});

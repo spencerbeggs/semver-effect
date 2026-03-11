@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-11
+last-synced: 2026-03-11
 completeness: 95
 related:
   - architecture.md
@@ -60,8 +60,16 @@ stores them, and all operations consume them.
   ComparatorSet type alias
 - `src/schemas/VersionDiff.ts` -- Structured diff between two versions
 - `src/utils/order.ts` -- SemVerOrder and SemVerOrderWithBuild instances
-- `src/index.ts` -- barrel file (only barrel in the project; no barrel files
-  in subdirectories). All internal imports go directly to source files.
+- `src/SemVer.ts` -- namespace aggregation module (re-exports class, adds
+  `make`, `ZERO`, `fromString`, `bump.*`, `Order`, `Equivalence`, Schema
+  transforms `Instance`/`FromString`)
+- `src/Range.ts` -- namespace aggregation module (re-exports class, adds
+  `fromString`, `any`, matching/algebra ops, Schema transforms)
+- `src/Comparator.ts` -- namespace aggregation module (re-exports class, adds
+  `fromString`, `any`, Schema transforms)
+- `src/VersionDiff.ts` -- namespace aggregation module (re-exports class)
+- `src/index.ts` -- barrel file using `export * as SemVer` / `export * as Range`
+  etc. All internal imports go directly to source files.
 
 ---
 
@@ -468,7 +476,13 @@ SemVer  <----  Comparator  <----  ComparatorSet  <----  Range
 3. `src/schemas/Comparator.ts` -- imports SemVer
 4. `src/schemas/Range.ts` -- imports Comparator (and ComparatorSet alias)
 5. `src/schemas/VersionDiff.ts` -- imports SemVer
-6. `src/index.ts` -- re-exports all public types
+6. `src/SemVer.ts` -- aggregates from schemas/SemVer, utils/compare, utils/bump,
+   utils/diff, utils/order, utils/grammar
+7. `src/Range.ts` -- aggregates from schemas/Range, utils/matching, utils/algebra,
+   utils/parseRange
+8. `src/Comparator.ts` -- aggregates from schemas/Comparator, utils/grammar
+9. `src/VersionDiff.ts` -- aggregates from schemas/VersionDiff
+10. `src/index.ts` -- re-exports namespace modules via `export * as`
 
 ### Type Discrimination
 

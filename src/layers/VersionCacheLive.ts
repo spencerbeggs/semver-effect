@@ -43,14 +43,14 @@ const requireNonEmptySet = (
  *
  * @example
  * ```typescript
- * import { VersionCache, VersionCacheLive, SemVerParserLive, parseVersion } from "semver-effect";
+ * import { SemVer, VersionCache, VersionCacheLive, SemVerParserLive } from "semver-effect";
  * import { Effect, Layer } from "effect";
  *
  * const AppLayer = Layer.merge(VersionCacheLive, SemVerParserLive);
  *
  * const program = Effect.gen(function* () {
  *   const cache = yield* VersionCache;
- *   const v = yield* parseVersion("1.0.0");
+ *   const v = yield* SemVer.fromString("1.0.0");
  *   yield* cache.add(v);
  *   const latest = yield* cache.latest();
  * }).pipe(Effect.provide(AppLayer));

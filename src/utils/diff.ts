@@ -22,13 +22,13 @@ const classifyDiff = (a: SemVer, b: SemVer): "major" | "minor" | "patch" | "prer
  *
  * @example
  * ```typescript
- * import { diff, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* parseVersion("1.2.3");
- *   const b = yield* parseVersion("1.3.0");
- *   const d = diff(a, b);
+ *   const a = yield* SemVer.fromString("1.2.3");
+ *   const b = yield* SemVer.fromString("1.3.0");
+ *   const d = SemVer.diff(a, b);
  *   console.log(d.type);  // "minor"
  *   console.log(d.minor); // 1
  * });

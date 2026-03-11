@@ -10,13 +10,13 @@ import { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
  *
  * @example
  * ```typescript
- * import { compare, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* parseVersion("1.0.0");
- *   const b = yield* parseVersion("2.0.0");
- *   console.log(compare(a, b)); // -1
+ *   const a = yield* SemVer.fromString("1.0.0");
+ *   const b = yield* SemVer.fromString("2.0.0");
+ *   console.log(SemVer.compare(a, b)); // -1
  * });
  * ```
  *
@@ -120,13 +120,13 @@ export const isStable = (v: SemVer): boolean => v.prerelease.length === 0;
  *
  * @example
  * ```typescript
- * import { truncate, parseVersion } from "semver-effect";
+ * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* parseVersion("1.2.3-alpha.1+build");
- *   console.log(truncate(v, "prerelease").toString()); // "1.2.3"
- *   console.log(truncate(v, "build").toString());      // "1.2.3-alpha.1"
+ *   const v = yield* SemVer.fromString("1.2.3-alpha.1+build");
+ *   console.log(SemVer.truncate(v, "prerelease").toString()); // "1.2.3"
+ *   console.log(SemVer.truncate(v, "build").toString());      // "1.2.3-alpha.1"
  * });
  * ```
  */

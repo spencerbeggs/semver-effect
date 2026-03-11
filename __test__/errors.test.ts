@@ -1,5 +1,6 @@
 import { Equal } from "effect";
 import { describe, expect, it } from "vitest";
+import * as Comparator from "../src/Comparator.js";
 import { EmptyCacheError } from "../src/errors/EmptyCacheError.js";
 import { InvalidBumpError } from "../src/errors/InvalidBumpError.js";
 import { InvalidComparatorError } from "../src/errors/InvalidComparatorError.js";
@@ -10,16 +11,16 @@ import { UnsatisfiableConstraintError } from "../src/errors/UnsatisfiableConstra
 import { UnsatisfiedRangeError } from "../src/errors/UnsatisfiedRangeError.js";
 import { VersionFetchError } from "../src/errors/VersionFetchError.js";
 import { VersionNotFoundError } from "../src/errors/VersionNotFoundError.js";
-import { Comparator } from "../src/schemas/Comparator.js";
-import { Range } from "../src/schemas/Range.js";
-import { SemVer } from "../src/schemas/SemVer.js";
+import * as Range from "../src/Range.js";
+import * as SemVer from "../src/SemVer.js";
 
-const v = (major: number, minor: number, patch: number) =>
-	new SemVer({ major, minor, patch, prerelease: [], build: [] });
+const v = (major: number, minor: number, patch: number) => SemVer.make(major, minor, patch);
 
-const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer) => new Comparator({ operator, version });
+const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer.SemVer) =>
+	new Comparator.Comparator({ operator, version });
 
-const r = (sets: ReadonlyArray<ReadonlyArray<Comparator>> = []) => new Range({ sets: [...sets.map((s) => [...s])] });
+const r = (sets: ReadonlyArray<ReadonlyArray<Comparator.Comparator>> = []) =>
+	new Range.Range({ sets: [...sets.map((s) => [...s])] });
 
 describe("InvalidVersionError", () => {
 	it("has the correct _tag", () => {
@@ -60,9 +61,9 @@ describe("InvalidVersionError", () => {
 	it("supports structural equality via Equal.equals", () => {
 		const a = new InvalidVersionError({ input: "1.2.x", position: 4 });
 		const b = new InvalidVersionError({ input: "1.2.x", position: 4 });
-		const c = new InvalidVersionError({ input: "1.2.x", position: 5 });
+		const d = new InvalidVersionError({ input: "1.2.x", position: 5 });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
@@ -105,9 +106,9 @@ describe("InvalidRangeError", () => {
 	it("supports structural equality via Equal.equals", () => {
 		const a = new InvalidRangeError({ input: ">=1.x", position: 3 });
 		const b = new InvalidRangeError({ input: ">=1.x", position: 3 });
-		const c = new InvalidRangeError({ input: ">=1.x" });
+		const d = new InvalidRangeError({ input: ">=1.x" });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
@@ -150,9 +151,9 @@ describe("InvalidComparatorError", () => {
 	it("supports structural equality via Equal.equals", () => {
 		const a = new InvalidComparatorError({ input: ">>1.0.0", position: 1 });
 		const b = new InvalidComparatorError({ input: ">>1.0.0", position: 1 });
-		const c = new InvalidComparatorError({ input: ">>1.0.0", position: 2 });
+		const d = new InvalidComparatorError({ input: ">>1.0.0", position: 2 });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
@@ -185,15 +186,15 @@ describe("InvalidPrereleaseError", () => {
 	it("supports structural equality via Equal.equals", () => {
 		const a = new InvalidPrereleaseError({ input: "alpha@1" });
 		const b = new InvalidPrereleaseError({ input: "alpha@1" });
-		const c = new InvalidPrereleaseError({ input: "beta@1" });
+		const d = new InvalidPrereleaseError({ input: "beta@1" });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });
 
 describe("UnsatisfiedRangeError", () => {
 	const range = r([[c(">=", v(2, 0, 0))]]);
-	const available: ReadonlyArray<SemVer> = [];
+	const available: ReadonlyArray<SemVer.SemVer> = [];
 
 	it("has the correct _tag", () => {
 		const err = new UnsatisfiedRangeError({ range, available });
@@ -206,7 +207,7 @@ describe("UnsatisfiedRangeError", () => {
 	});
 
 	it("exposes the available field", () => {
-		const versions: ReadonlyArray<SemVer> = [v(1, 0, 0), v(1, 5, 0)];
+		const versions: ReadonlyArray<SemVer.SemVer> = [v(1, 0, 0), v(1, 5, 0)];
 		const err = new UnsatisfiedRangeError({ range, available: versions });
 		expect(err.available).toBe(versions);
 	});
@@ -290,7 +291,7 @@ describe("EmptyCacheError", () => {
 });
 
 describe("UnsatisfiableConstraintError", () => {
-	const constraints: ReadonlyArray<Range> = [];
+	const constraints: ReadonlyArray<Range.Range> = [];
 
 	it("has the correct _tag", () => {
 		const err = new UnsatisfiableConstraintError({ constraints });
@@ -298,7 +299,7 @@ describe("UnsatisfiableConstraintError", () => {
 	});
 
 	it("exposes the constraints field", () => {
-		const cs: ReadonlyArray<Range> = [r([[c(">=", v(1, 0, 0))]]), r([[c("<", v(2, 0, 0))]])];
+		const cs: ReadonlyArray<Range.Range> = [r([[c(">=", v(1, 0, 0))]]), r([[c("<", v(2, 0, 0))]])];
 		const err = new UnsatisfiableConstraintError({ constraints: cs });
 		expect(err.constraints).toBe(cs);
 	});
@@ -316,7 +317,7 @@ describe("UnsatisfiableConstraintError", () => {
 	});
 
 	it("supports structural equality via Equal.equals", () => {
-		const sharedConstraints: ReadonlyArray<Range> = [r([[c(">=", v(1, 0, 0))]])];
+		const sharedConstraints: ReadonlyArray<Range.Range> = [r([[c(">=", v(1, 0, 0))]])];
 		const a = new UnsatisfiableConstraintError({ constraints: sharedConstraints });
 		const b = new UnsatisfiableConstraintError({ constraints: sharedConstraints });
 		const d = new UnsatisfiableConstraintError({ constraints: [r([[c(">=", v(2, 0, 0))]])] });
@@ -397,8 +398,8 @@ describe("VersionFetchError", () => {
 	it("supports structural equality via Equal.equals", () => {
 		const a = new VersionFetchError({ source: "npm", message: "Network timeout" });
 		const b = new VersionFetchError({ source: "npm", message: "Network timeout" });
-		const c = new VersionFetchError({ source: "github", message: "Network timeout" });
+		const d = new VersionFetchError({ source: "github", message: "Network timeout" });
 		expect(Equal.equals(a, b)).toBe(true);
-		expect(Equal.equals(a, c)).toBe(false);
+		expect(Equal.equals(a, d)).toBe(false);
 	});
 });

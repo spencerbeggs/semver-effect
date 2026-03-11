@@ -26,11 +26,10 @@ value or fails with a typed error. Use `Effect.gen` to work with them:
 
 ```typescript
 import { Effect } from "effect";
-import type { SemVer } from "semver-effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const version: SemVer = yield* parseVersion("2.1.0-beta.3+build.42");
+  const version = yield* SemVer.fromString("2.1.0-beta.3+build.42");
 
   console.log(version.major);      // 2
   console.log(version.minor);      // 1
@@ -47,9 +46,9 @@ Invalid input produces a typed `InvalidVersionError` with position information:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
-const program = parseVersion("v1.0.0"); // "v" prefix is not valid SemVer
+const program = SemVer.fromString("v1.0.0"); // "v" prefix is not valid SemVer
 
 Effect.runSync(
   program.pipe(
@@ -67,24 +66,24 @@ Comparison functions support both direct call and pipeable styles:
 
 ```typescript
 import { Effect, pipe } from "effect";
-import { parseVersion, compare, gt, lt, sort } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.0.0");
-  const b = yield* parseVersion("2.3.1");
-  const c = yield* parseVersion("1.5.0");
+  const a = yield* SemVer.fromString("1.0.0");
+  const b = yield* SemVer.fromString("2.3.1");
+  const c = yield* SemVer.fromString("1.5.0");
 
   // Direct call style
-  console.log(compare(a, b));  // -1
-  console.log(gt(b, a));       // true
-  console.log(lt(a, c));       // true
+  console.log(SemVer.compare(a, b));  // -1
+  console.log(SemVer.gt(b, a));       // true
+  console.log(SemVer.lt(a, c));       // true
 
   // Pipeable style
-  const isGreater = pipe(b, gt(a));
+  const isGreater = pipe(b, SemVer.gt(a));
   console.log(isGreater); // true
 
   // Sort an array of versions
-  const sorted = sort([b, a, c]);
+  const sorted = SemVer.sort([b, a, c]);
   console.log(sorted.map(String)); // ["1.0.0", "1.5.0", "2.3.1"]
 });
 
@@ -97,22 +96,22 @@ Parse range expressions and check whether versions satisfy them:
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion, parseRange, satisfies, filter, maxSatisfying } from "semver-effect";
+import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const range = yield* parseRange(">=1.2.0 <2.0.0");
+  const range = yield* Range.fromString(">=1.2.0 <2.0.0");
 
-  const v1 = yield* parseVersion("1.5.3");
-  const v2 = yield* parseVersion("2.0.0");
-  const v3 = yield* parseVersion("1.2.0");
+  const v1 = yield* SemVer.fromString("1.5.3");
+  const v2 = yield* SemVer.fromString("2.0.0");
+  const v3 = yield* SemVer.fromString("1.2.0");
 
-  console.log(satisfies(v1, range)); // true
-  console.log(satisfies(v2, range)); // false
-  console.log(satisfies(v3, range)); // true
+  console.log(Range.satisfies(v1, range)); // true
+  console.log(Range.satisfies(v2, range)); // false
+  console.log(Range.satisfies(v3, range)); // true
 
   // Filter a list of versions against a range
   const versions = [v1, v2, v3];
-  const matching = filter(versions, range);
+  const matching = Range.filter(versions, range);
   console.log(matching.map(String)); // ["1.5.3", "1.2.0"]
 });
 
@@ -130,12 +129,11 @@ For applications that need dependency injection or testability, use the
 
 ```typescript
 import { Effect } from "effect";
-import type { SemVer } from "semver-effect";
 import { SemVerParser, SemVerParserLive } from "semver-effect";
 
 const program = Effect.gen(function* () {
   const parser = yield* SemVerParser;
-  const version: SemVer = yield* parser.parseVersion("3.0.0-alpha.1");
+  const version = yield* parser.parseVersion("3.0.0-alpha.1");
   const range = yield* parser.parseRange("^3.0.0-alpha.0");
   const comparator = yield* parser.parseComparator(">=3.0.0");
 
@@ -160,3 +158,5 @@ custom parsing behavior by implementing the `SemVerParser` interface.
   node-semver
 - [SemVer Spec Compliance](./semver-spec-compliance.md) -- spec details and
   edge cases
+- [Advanced Example](./advanced-example.md) -- building a document version
+  system with Effect

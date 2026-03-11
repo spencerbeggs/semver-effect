@@ -28,12 +28,12 @@ const matcher = Match.type<Printable>().pipe(
  *
  * @example
  * ```typescript
- * import { prettyPrint, parseVersion } from "semver-effect";
+ * import { PrettyPrint, SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* parseVersion("1.2.3-alpha.1");
- *   console.log(prettyPrint(v)); // "1.2.3-alpha.1"
+ *   const v = yield* SemVer.fromString("1.2.3-alpha.1");
+ *   console.log(PrettyPrint.prettyPrint(v)); // "1.2.3-alpha.1"
  * });
  * ```
  *
