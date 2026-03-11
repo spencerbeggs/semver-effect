@@ -1,34 +1,32 @@
 # API Guide
 
 Complete reference for all public exports from `semver-effect`, organized by
-category.
+namespaced module.
 
 ## Table of Contents
 
-- [Data Types](#data-types)
-- [Parsing](#parsing)
-- [Comparison](#comparison)
-- [Bumping](#bumping)
-- [Ranges and Matching](#ranges-and-matching)
-- [Range Algebra](#range-algebra)
-- [Diff](#diff)
-- [Ordering](#ordering)
-- [Pretty Printing](#pretty-printing)
+- [SemVer](#semver)
+- [Range](#range)
+- [Comparator](#comparator)
+- [VersionDiff](#versiondiff)
+- [PrettyPrint](#prettyprint)
 - [Services and Layers](#services-and-layers)
 - [Errors](#errors)
 
 ---
 
-## Data Types
+## SemVer
 
-### SemVer
+All version-related operations live under the `SemVer` namespace.
+
+```typescript
+import { SemVer } from "semver-effect";
+```
+
+### Type
 
 The core version type. An immutable `Data.TaggedClass` with `Equal`, `Hash`,
 and custom `toString`.
-
-```typescript
-import type { SemVer } from "semver-effect";
-```
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -43,36 +41,231 @@ differing only in build metadata are considered equal.
 
 ```typescript
 import { Effect, Equal } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.0.0+build1");
-  const b = yield* parseVersion("1.0.0+build2");
+  const a = yield* SemVer.fromString("1.0.0+build1");
+  const b = yield* SemVer.fromString("1.0.0+build2");
   console.log(Equal.equals(a, b)); // true
 });
 ```
 
-### Comparator
-
-A single version constraint: an operator paired with a version.
+### Construction
 
 ```typescript
-import type { Comparator } from "semver-effect";
+import { SemVer } from "semver-effect";
+
+// Convenience constructor
+const v = SemVer.make(1, 2, 3);
+const pre = SemVer.make(1, 0, 0, ["alpha", 1]);
+const withBuild = SemVer.make(1, 0, 0, [], ["build.42"]);
+
+// Zero constant
+const zero = SemVer.ZERO; // 0.0.0
 ```
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `operator` | `"=" \| ">" \| ">=" \| "<" \| "<="` | Comparison operator |
-| `version` | `SemVer` | Version to compare against |
+### Parsing (fromString)
 
-### Range
+Parse a string into a `SemVer`. Strict SemVer 2.0.0 only -- no `v` prefix, no
+loose mode, no coercion.
+
+```typescript
+import { SemVer } from "semver-effect";
+
+// SemVer.fromString: (input: string) => Effect<SemVer.SemVer, InvalidVersionError>
+```
+
+```typescript
+import { Effect } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const v = yield* SemVer.fromString("1.2.3-alpha.1+build.456");
+  console.log(v.major);      // 1
+  console.log(v.prerelease); // ["alpha", 1]
+  console.log(v.build);      // ["build", "456"]
+});
+```
+
+### Comparison
+
+All comparison functions are dual -- they accept either `(self, that)` for
+direct call or `(that)` for pipeable usage.
+
+`compare` returns `-1`, `0`, or `1`. Build metadata is ignored per the spec.
+`compareWithBuild` is like `compare` but includes build metadata for a total
+ordering.
+
+`equal`, `gt`, `gte`, `lt`, `lte`, `neq` are boolean comparison functions.
+All ignore build metadata.
+
+```typescript
+import { Effect, pipe } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const a = yield* SemVer.fromString("1.5.0");
+  const b = yield* SemVer.fromString("2.0.0");
+  console.log(SemVer.gt(a, b));  // false
+  console.log(SemVer.lte(a, b)); // true
+  const result = pipe(a, SemVer.gt(b)); // false
+});
+```
+
+### Predicates
+
+Check whether a version has prerelease identifiers.
+
+```typescript
+import { Effect } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const v = yield* SemVer.fromString("1.0.0-beta.1");
+  console.log(SemVer.isPrerelease(v)); // true
+  console.log(SemVer.isStable(v));     // false
+});
+```
+
+### Sorting (sort, rsort, max, min)
+
+Sort an array of versions in ascending or descending order. `max` and `min`
+return `Option<SemVer>`.
+
+```typescript
+import { Effect, Option } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const versions = [
+    yield* SemVer.fromString("2.0.0"),
+    yield* SemVer.fromString("1.0.0"),
+    yield* SemVer.fromString("1.5.0"),
+  ];
+  console.log(SemVer.sort(versions).map(String));  // ["1.0.0", "1.5.0", "2.0.0"]
+  console.log(SemVer.rsort(versions).map(String)); // ["2.0.0", "1.5.0", "1.0.0"]
+  console.log(Option.getOrNull(SemVer.max(versions))?.toString()); // "2.0.0"
+});
+```
+
+### Truncate
+
+Strip prerelease or build metadata from a version.
+
+```typescript
+import { Effect } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const v = yield* SemVer.fromString("1.2.3-alpha+build");
+  console.log(SemVer.truncate(v, "build").toString());      // "1.2.3-alpha"
+  console.log(SemVer.truncate(v, "prerelease").toString()); // "1.2.3"
+});
+```
+
+### Bumping (bump.\*)
+
+Bump functions create a new `SemVer` with the incremented component. They are
+pure functions (no Effect wrapper needed).
+
+```typescript
+import { Effect } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const v = yield* SemVer.fromString("1.2.3");
+  console.log(SemVer.bump.major(v).toString()); // "2.0.0"
+  console.log(SemVer.bump.minor(v).toString()); // "1.3.0"
+  console.log(SemVer.bump.patch(v).toString()); // "1.2.4"
+});
+```
+
+Prerelease and release bumps:
+
+```typescript
+import { Effect } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const stable = yield* SemVer.fromString("1.2.3");
+  console.log(SemVer.bump.prerelease(stable).toString());         // "1.2.4-0"
+  console.log(SemVer.bump.prerelease(stable, "beta").toString()); // "1.2.4-beta.0"
+
+  const pre = yield* SemVer.fromString("1.2.4-beta.0");
+  console.log(SemVer.bump.prerelease(pre, "beta").toString());    // "1.2.4-beta.1"
+
+  const v2 = yield* SemVer.fromString("1.2.3-beta.5+build");
+  console.log(SemVer.bump.release(v2).toString()); // "1.2.3"
+});
+```
+
+### Diff
+
+Compute a structured diff between two versions. Returns a `VersionDiff`
+describing the type and magnitude of the change.
+
+```typescript
+import { Effect } from "effect";
+import { SemVer } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const a = yield* SemVer.fromString("1.2.3");
+  const b = yield* SemVer.fromString("2.0.0");
+  const d = SemVer.diff(a, b);
+  console.log(d.type);  // "major"
+  console.log(d.major); // 1
+  console.log(d.toString()); // "major (1.2.3 -> 2.0.0)"
+});
+```
+
+### Effect Instances (Order, OrderWithBuild, Equivalence)
+
+`SemVer.Order` is an `Order<SemVer>` instance implementing SemVer 2.0.0
+precedence rules (build metadata ignored). `SemVer.OrderWithBuild` includes
+build metadata for a total ordering. `SemVer.Equivalence` is an
+`Equivalence<SemVer>` (build metadata ignored).
+
+```typescript
+import { SortedSet } from "effect";
+import { SemVer } from "semver-effect";
+
+const set = SortedSet.empty<SemVer.SemVer>(SemVer.Order);
+
+const eq = SemVer.Equivalence;
+console.log(eq(SemVer.make(1, 0, 0), SemVer.make(1, 0, 0))); // true
+```
+
+### Schema (Instance, FromString)
+
+`SemVer.Instance` validates that a value is a `SemVer` instance.
+`SemVer.FromString` decodes a string into a `SemVer` and encodes back to
+string.
+
+```typescript
+import { Schema } from "effect";
+import { SemVer } from "semver-effect";
+
+// Validate a SemVer instance
+Schema.decodeUnknownSync(SemVer.Instance)(someSemVer);
+
+// Parse a string into a SemVer via Schema
+Schema.decodeUnknownSync(SemVer.FromString)("1.2.3");
+```
+
+---
+
+## Range
+
+All range operations live under the `Range` namespace.
+
+```typescript
+import { Range } from "semver-effect";
+```
+
+### Type
 
 A set of comparator sets joined with OR semantics. Each inner array is a
 comparator set (AND semantics).
-
-```typescript
-import type { Range, ComparatorSet } from "semver-effect";
-```
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -82,20 +275,203 @@ The `toString()` method produces a normalized range string:
 
 ```typescript
 import { Effect } from "effect";
-import { parseRange } from "semver-effect";
+import { Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const range = yield* parseRange("^1.2.3 || ~2.0.0");
+  const range = yield* Range.fromString("^1.2.3 || ~2.0.0");
   console.log(range.toString()); // ">=1.2.3 <2.0.0-0 || >=2.0.0 <2.1.0-0"
 });
 ```
 
-### VersionDiff
+### Parsing (fromString)
 
-A structured diff between two versions.
+Parse a range expression string into a `Range`. Supports caret, tilde,
+X-ranges, hyphen ranges, and OR unions. The result is normalized (sorted
+comparators, duplicates removed).
 
 ```typescript
-import type { VersionDiff } from "semver-effect";
+import { Range } from "semver-effect";
+
+// Range.fromString: (input: string) => Effect<Range.Range, InvalidRangeError>
+```
+
+```typescript
+import { Effect } from "effect";
+import { Range } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const range = yield* Range.fromString("^1.2.3");
+  console.log(range.toString()); // ">=1.2.3 <2.0.0-0"
+});
+```
+
+### Constants
+
+```typescript
+import { Range } from "semver-effect";
+
+const all = Range.any; // matches any version (>=0.0.0)
+```
+
+### Matching
+
+`satisfies`, `filter`, `maxSatisfying`, and `minSatisfying` check versions
+against ranges.
+
+`satisfies` is a dual function (direct and pipeable). Prerelease versions only
+satisfy a range if at least one comparator in the matching set shares the same
+`[major, minor, patch]` tuple and has a prerelease. This follows node-semver
+convention.
+
+```typescript
+import { Effect, Option, pipe } from "effect";
+import { SemVer, Range } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const v = yield* SemVer.fromString("1.5.0");
+  const range = yield* Range.fromString("^1.2.0");
+
+  // Direct
+  console.log(Range.satisfies(v, range)); // true
+
+  // Pipeable
+  console.log(pipe(v, Range.satisfies(range))); // true
+
+  // Filter, maxSatisfying, minSatisfying
+  const versions = [
+    yield* SemVer.fromString("1.0.0"),
+    yield* SemVer.fromString("1.5.0"),
+    yield* SemVer.fromString("2.0.0"),
+  ];
+  console.log(Range.filter(versions, range).map(String)); // ["1.0.0", "1.5.0"]
+
+  const best = Range.maxSatisfying(versions, range);
+  console.log(Option.getOrNull(best)?.toString()); // "1.5.0"
+});
+```
+
+### Algebra
+
+Operations for combining and analyzing ranges.
+
+```typescript
+import { Effect } from "effect";
+import { Range } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  // union — combine with OR semantics
+  const a = yield* Range.fromString("^1.0.0");
+  const b = yield* Range.fromString("^3.0.0");
+  const combined = Range.union(a, b);
+  console.log(combined.toString());
+  // ">=1.0.0 <2.0.0-0 || >=3.0.0 <4.0.0-0"
+
+  // intersect — may fail with UnsatisfiableConstraintError
+  const c = yield* Range.fromString(">=1.0.0 <3.0.0");
+  const d = yield* Range.fromString(">=2.0.0 <4.0.0");
+  const result = yield* Range.intersect(c, d);
+  console.log(result.toString()); // ">=2.0.0 <3.0.0"
+
+  // isSubset
+  const narrow = yield* Range.fromString("^1.5.0");
+  const wide = yield* Range.fromString("^1.0.0");
+  console.log(Range.isSubset(narrow, wide)); // true
+
+  // equivalent
+  const e = yield* Range.fromString(">=1.0.0 <2.0.0-0");
+  const f = yield* Range.fromString("^1.0.0");
+  console.log(Range.equivalent(e, f)); // true
+
+  // simplify — remove redundant comparator sets
+  const g = Range.union(a, yield* Range.fromString("^1.5.0"));
+  const simplified = Range.simplify(g);
+  console.log(simplified.toString());
+});
+```
+
+### Schema (Instance, FromString)
+
+`Range.Instance` validates that a value is a `Range` instance.
+`Range.FromString` decodes a string into a `Range` and encodes back to string.
+
+```typescript
+import { Schema } from "effect";
+import { Range } from "semver-effect";
+
+Schema.decodeUnknownSync(Range.Instance)(someRange);
+Schema.decodeUnknownSync(Range.FromString)("^1.2.3");
+```
+
+---
+
+## Comparator
+
+All comparator operations live under the `Comparator` namespace.
+
+```typescript
+import { Comparator } from "semver-effect";
+```
+
+### Type
+
+A single version constraint: an operator paired with a version.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `operator` | `"=" \| ">" \| ">=" \| "<" \| "<="` | Comparison operator |
+| `version` | `SemVer` | Version to compare against |
+
+### Parsing (fromString)
+
+Parse a single comparator string (operator + fully specified version).
+
+```typescript
+import { Comparator } from "semver-effect";
+
+// Comparator.fromString: (input: string) => Effect<Comparator.Comparator, InvalidComparatorError>
+```
+
+```typescript
+import { Effect } from "effect";
+import { Comparator } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const comp = yield* Comparator.fromString(">=2.0.0-rc.1");
+  console.log(comp.operator);          // ">="
+  console.log(comp.version.toString()); // "2.0.0-rc.1"
+});
+```
+
+### Constants
+
+```typescript
+import { Comparator } from "semver-effect";
+
+const all = Comparator.any; // matches any version (>=0.0.0)
+```
+
+### Schema (Instance, FromString)
+
+`Comparator.Instance` validates that a value is a `Comparator` instance.
+`Comparator.FromString` decodes a string into a `Comparator` and encodes back
+to string.
+
+```typescript
+import { Schema } from "effect";
+import { Comparator } from "semver-effect";
+
+Schema.decodeUnknownSync(Comparator.Instance)(someComparator);
+Schema.decodeUnknownSync(Comparator.FromString)(">=1.2.3");
+```
+
+---
+
+## VersionDiff
+
+A structured diff between two versions. Produced by `SemVer.diff`.
+
+```typescript
+import { VersionDiff } from "semver-effect";
 ```
 
 | Field | Type | Description |
@@ -107,418 +483,14 @@ import type { VersionDiff } from "semver-effect";
 | `minor` | `number` | Delta in minor component |
 | `patch` | `number` | Delta in patch component |
 
----
-
-## Parsing
-
-### parseVersion
-
-Parse a string into a `SemVer`. Strict SemVer 2.0.0 only -- no `v` prefix, no
-loose mode, no coercion.
-
-```typescript
-import { parseVersion } from "semver-effect";
-
-// parseVersion: (input: string) => Effect<SemVer, InvalidVersionError>
-```
-
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.2.3-alpha.1+build.456");
-  console.log(v.major);      // 1
-  console.log(v.prerelease); // ["alpha", 1]
-  console.log(v.build);      // ["build", "456"]
-});
-```
-
-### parseRange
-
-Parse a range expression string into a `Range`. Supports caret, tilde,
-X-ranges, hyphen ranges, and OR unions. The result is normalized (sorted
-comparators, duplicates removed).
-
-```typescript
-import { parseRange } from "semver-effect";
-
-// parseRange: (input: string) => Effect<Range, InvalidRangeError>
-```
-
-```typescript
-import { Effect } from "effect";
-import { parseRange } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const range = yield* parseRange("^1.2.3");
-  console.log(range.toString()); // ">=1.2.3 <2.0.0-0"
-});
-```
-
-### parseComparator
-
-Parse a single comparator string (operator + fully specified version).
-
-```typescript
-import { parseComparator } from "semver-effect";
-
-// parseComparator: (input: string) => Effect<Comparator, InvalidComparatorError>
-```
-
-```typescript
-import { Effect } from "effect";
-import { parseComparator } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const comp = yield* parseComparator(">=2.0.0-rc.1");
-  console.log(comp.operator);          // ">="
-  console.log(comp.version.toString()); // "2.0.0-rc.1"
-});
-```
-
----
-
-## Comparison
-
-All comparison functions are dual -- they accept either `(self, that)` for
-direct call or `(that)` for pipeable usage.
-
-### compare
-
-Returns `-1`, `0`, or `1`. Build metadata is ignored per the spec.
-
-```typescript
-import { compare } from "semver-effect";
-
-// compare(self: SemVer, that: SemVer): -1 | 0 | 1
-// compare(that: SemVer): (self: SemVer) => -1 | 0 | 1
-```
-
-### compareWithBuild
-
-Like `compare`, but includes build metadata in the comparison for cases where
-you need a total ordering including builds.
-
-```typescript
-import { compareWithBuild } from "semver-effect";
-```
-
-### equal, gt, gte, lt, lte, neq
-
-Boolean comparison functions. All ignore build metadata.
-
-```typescript
-import { Effect, pipe } from "effect";
-import { parseVersion, gt, lte } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.5.0");
-  const b = yield* parseVersion("2.0.0");
-
-  // Direct call
-  console.log(gt(a, b));  // false
-  console.log(lte(a, b)); // true
-
-  // Pipeable
-  const result = pipe(a, gt(b)); // false
-});
-```
-
-### isPrerelease, isStable
-
-Check whether a version has prerelease identifiers.
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, isPrerelease, isStable } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.0.0-beta.1");
-  console.log(isPrerelease(v)); // true
-  console.log(isStable(v));     // false
-});
-```
-
-### sort, rsort
-
-Sort an array of versions in ascending or descending order.
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, sort, rsort } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const versions = [
-    yield* parseVersion("2.0.0"),
-    yield* parseVersion("1.0.0"),
-    yield* parseVersion("1.5.0"),
-  ];
-
-  console.log(sort(versions).map(String));  // ["1.0.0", "1.5.0", "2.0.0"]
-  console.log(rsort(versions).map(String)); // ["2.0.0", "1.5.0", "1.0.0"]
-});
-```
-
-### max, min
-
-Find the highest or lowest version from an array. Returns `Option<SemVer>`.
-
-```typescript
-import { Effect, Option } from "effect";
-import { parseVersion, max, min } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const versions = [
-    yield* parseVersion("1.0.0"),
-    yield* parseVersion("3.0.0"),
-    yield* parseVersion("2.0.0"),
-  ];
-
-  console.log(Option.getOrNull(max(versions))?.toString()); // "3.0.0"
-  console.log(Option.getOrNull(min(versions))?.toString()); // "1.0.0"
-  console.log(Option.isNone(max([])));                      // true
-});
-```
-
-### truncate
-
-Strip prerelease or build metadata from a version.
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, truncate } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.2.3-alpha+build");
-
-  console.log(truncate(v, "build").toString());      // "1.2.3-alpha"
-  console.log(truncate(v, "prerelease").toString()); // "1.2.3"
-});
-```
-
----
-
-## Bumping
-
-Bump functions create a new `SemVer` with the incremented component. They are
-pure functions (no Effect wrapper needed).
-
-### bumpMajor, bumpMinor, bumpPatch
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, bumpMajor, bumpMinor, bumpPatch } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.2.3");
-
-  console.log(bumpMajor(v).toString()); // "2.0.0"
-  console.log(bumpMinor(v).toString()); // "1.3.0"
-  console.log(bumpPatch(v).toString()); // "1.2.4"
-});
-```
-
-### bumpPrerelease
-
-Increment or add a prerelease identifier. Optionally provide a named prefix.
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, bumpPrerelease } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const stable = yield* parseVersion("1.2.3");
-  console.log(bumpPrerelease(stable).toString());         // "1.2.4-0"
-  console.log(bumpPrerelease(stable, "beta").toString()); // "1.2.4-beta.0"
-
-  const pre = yield* parseVersion("1.2.4-beta.0");
-  console.log(bumpPrerelease(pre, "beta").toString());    // "1.2.4-beta.1"
-  console.log(bumpPrerelease(pre, "rc").toString());      // "1.2.4-rc.0"
-});
-```
-
-### bumpRelease
-
-Strip prerelease and build metadata, keeping major.minor.patch.
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, bumpRelease } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.2.3-beta.5+build");
-  console.log(bumpRelease(v).toString()); // "1.2.3"
-});
-```
-
----
-
-## Ranges and Matching
-
-### satisfies
-
-Check whether a version satisfies a range. Dual function.
-
-```typescript
-import { Effect, pipe } from "effect";
-import { parseVersion, parseRange, satisfies } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const v = yield* parseVersion("1.5.0");
-  const range = yield* parseRange("^1.2.0");
-
-  // Direct
-  console.log(satisfies(v, range)); // true
-
-  // Pipeable
-  console.log(pipe(v, satisfies(range))); // true
-});
-```
-
-Prerelease versions only satisfy a range if at least one comparator in the
-matching set shares the same `[major, minor, patch]` tuple and has a prerelease.
-This follows node-semver convention.
-
-### filter
-
-Filter an array of versions to those satisfying a range.
-
-```typescript
-import { filter } from "semver-effect";
-
-// filter(versions: ReadonlyArray<SemVer>, range: Range): Array<SemVer>
-// filter(range: Range): (versions: ReadonlyArray<SemVer>) => Array<SemVer>
-```
-
-### maxSatisfying, minSatisfying
-
-Find the highest or lowest version satisfying a range. Returns
-`Option<SemVer>`.
-
-```typescript
-import { Effect, Option } from "effect";
-import { parseVersion, parseRange, maxSatisfying } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const range = yield* parseRange("^1.0.0");
-  const versions = [
-    yield* parseVersion("1.0.0"),
-    yield* parseVersion("1.5.0"),
-    yield* parseVersion("2.0.0"),
-  ];
-
-  const best = maxSatisfying(versions, range);
-  console.log(Option.getOrNull(best)?.toString()); // "1.5.0"
-});
-```
-
----
-
-## Range Algebra
-
-Operations for combining and analyzing ranges.
-
-### union
-
-Combine two ranges with OR semantics.
-
-```typescript
-import { Effect } from "effect";
-import { parseRange, union } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const a = yield* parseRange("^1.0.0");
-  const b = yield* parseRange("^3.0.0");
-  const combined = union(a, b);
-  console.log(combined.toString());
-  // ">=1.0.0 <2.0.0-0 || >=3.0.0 <4.0.0-0"
-});
-```
-
-### intersect
-
-Compute the intersection of two ranges. Fails with
-`UnsatisfiableConstraintError` if no version can satisfy both ranges.
-
-```typescript
-import { Effect } from "effect";
-import { parseRange, intersect } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const a = yield* parseRange(">=1.0.0 <3.0.0");
-  const b = yield* parseRange(">=2.0.0 <4.0.0");
-  const result = yield* intersect(a, b);
-  console.log(result.toString());
-  // ">=2.0.0 <3.0.0"
-});
-```
-
-### isSubset
-
-Check whether every version matched by `sub` is also matched by `sup`.
-
-```typescript
-import { Effect } from "effect";
-import { parseRange, isSubset } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const narrow = yield* parseRange("^1.5.0");
-  const wide = yield* parseRange("^1.0.0");
-  console.log(isSubset(narrow, wide)); // true
-  console.log(isSubset(wide, narrow)); // false
-});
-```
-
-### equivalent
-
-Check whether two ranges match exactly the same set of versions.
-
-```typescript
-import { Effect } from "effect";
-import { parseRange, equivalent } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const a = yield* parseRange(">=1.0.0 <2.0.0-0");
-  const b = yield* parseRange("^1.0.0");
-  console.log(equivalent(a, b)); // true
-});
-```
-
-### simplify
-
-Remove redundant comparator sets from a range.
-
-```typescript
-import { Effect } from "effect";
-import { parseRange, union, simplify } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const a = yield* parseRange("^1.0.0");
-  const b = yield* parseRange("^1.5.0");
-  const combined = union(a, b);
-  const simplified = simplify(combined);
-  console.log(simplified.toString());
-});
-```
-
----
-
-## Diff
-
-### diff
-
-Compute a structured diff between two versions. Returns a `VersionDiff`
-describing the type and magnitude of the change.
-
-```typescript
-import { Effect } from "effect";
-import { parseVersion, diff } from "semver-effect";
-
-const program = Effect.gen(function* () {
-  const a = yield* parseVersion("1.2.3");
-  const b = yield* parseVersion("2.0.0");
-  const d = diff(a, b);
+  const a = yield* SemVer.fromString("1.2.3");
+  const b = yield* SemVer.fromString("2.0.0");
+  const d = SemVer.diff(a, b);
 
   console.log(d.type);  // "major"
   console.log(d.major); // 1
@@ -530,42 +502,24 @@ const program = Effect.gen(function* () {
 
 ---
 
-## Ordering
+## PrettyPrint
 
-### SemVerOrder
-
-An `Order<SemVer>` instance that implements SemVer 2.0.0 precedence rules.
-Build metadata is ignored.
+Cross-cutting pretty printing for all schema types.
 
 ```typescript
-import { SortedSet } from "effect";
-import { SemVerOrder } from "semver-effect";
+import { PrettyPrint } from "semver-effect";
+import type { PrettyPrint as PP } from "semver-effect";
 
-const set = SortedSet.empty<SemVer>(SemVerOrder);
+// PrettyPrint.prettyPrint: (value: PP.Printable) => string
 ```
 
-### SemVerOrderWithBuild
-
-Like `SemVerOrder` but includes build metadata for a total ordering.
-
----
-
-## Pretty Printing
-
-### prettyPrint
-
-Format any `SemVer`, `Comparator`, `Range`, or `VersionDiff` as a string.
-
-```typescript
-import { prettyPrint } from "semver-effect";
-import type { Printable } from "semver-effect";
-
-// prettyPrint: (value: Printable) => string
-```
+Accepts any `SemVer`, `Comparator`, `Range`, or `VersionDiff` instance.
 
 ---
 
 ## Services and Layers
+
+Services and layers are flat exports (not namespaced).
 
 ### SemVerParser (service)
 
@@ -608,22 +562,22 @@ All errors extend `Data.TaggedError` and can be matched with
 
 | Error | Produced by | Key fields |
 | --- | --- | --- |
-| `InvalidVersionError` | `parseVersion` | `input`, `position` |
-| `InvalidRangeError` | `parseRange` | `input`, `position` |
-| `InvalidComparatorError` | `parseComparator` | `input`, `position` |
+| `InvalidVersionError` | `SemVer.fromString` | `input`, `position` |
+| `InvalidRangeError` | `Range.fromString` | `input`, `position` |
+| `InvalidComparatorError` | `Comparator.fromString` | `input`, `position` |
 | `InvalidPrereleaseError` | Prerelease operations | `input` |
 | `InvalidBumpError` | Bump operations | -- |
 | `UnsatisfiedRangeError` | `VersionCache.resolve` | `range`, `available` |
-| `UnsatisfiableConstraintError` | `intersect` | `constraints` |
+| `UnsatisfiableConstraintError` | `Range.intersect` | `constraints` |
 | `EmptyCacheError` | `VersionCache` queries | -- |
 | `VersionNotFoundError` | `VersionCache.diff`, `next`, `prev` | `version` |
 | `VersionFetchError` | `VersionFetcher.fetch` | -- |
 
 ```typescript
 import { Effect } from "effect";
-import { parseVersion } from "semver-effect";
+import { SemVer } from "semver-effect";
 
-const program = parseVersion("not-valid").pipe(
+const program = SemVer.fromString("not-valid").pipe(
   Effect.catchTag("InvalidVersionError", (err) => {
     console.log(err.message);   // 'Invalid version string: "not-valid" at position 0'
     console.log(err.input);     // "not-valid"
