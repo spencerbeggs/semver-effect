@@ -25,7 +25,9 @@ const binarySearch = (arr: ReadonlyArray<SemVer>, target: SemVer): number => {
 	return -1;
 };
 
-const requireNonEmpty = (set: SortedSet.SortedSet<SemVer>): Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError> => {
+const requireNonEmptySet = (
+	set: SortedSet.SortedSet<SemVer>,
+): Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError> => {
 	if (SortedSet.size(set) === 0) {
 		return Effect.fail(new EmptyCacheError());
 	}
@@ -83,91 +85,68 @@ export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = 
 			remove: (version) => Ref.update(ref, SortedSet.remove(version)),
 
 			get versions() {
-				return Effect.flatMap(Ref.get(ref), requireNonEmpty);
+				return Effect.flatMap(Ref.get(ref), requireNonEmptySet);
 			},
 
 			latest: () =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					const arr = toArray(set);
-					if (arr.length === 0) return Effect.fail(new EmptyCacheError());
-					return Effect.succeed(arr[arr.length - 1]);
-				}),
+				Effect.flatMap(Ref.get(ref), (set) => Effect.map(requireNonEmptySet(set), (arr) => arr[arr.length - 1])),
 
-			oldest: () =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					const arr = toArray(set);
-					if (arr.length === 0) return Effect.fail(new EmptyCacheError());
-					return Effect.succeed(arr[0]);
-				}),
+			oldest: () => Effect.flatMap(Ref.get(ref), (set) => Effect.map(requireNonEmptySet(set), (arr) => arr[0])),
 
 			resolve: (range) => resolveFromRef(range),
 
 			resolveString: (input) => Effect.flatMap(parser.parseRange(input), resolveFromRef),
 
 			filter: (range) =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					if (SortedSet.size(set) === 0) {
-						return Effect.fail(new EmptyCacheError());
-					}
-					const arr = toArray(set);
-					return Effect.succeed(arr.filter((v) => matchSatisfies(v, range)));
-				}),
+				Effect.flatMap(Ref.get(ref), (set) =>
+					Effect.map(requireNonEmptySet(set), (arr) => arr.filter((v) => matchSatisfies(v, range))),
+				),
 
 			groupBy: (strategy) =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					if (SortedSet.size(set) === 0) {
-						return Effect.fail(new EmptyCacheError());
-					}
-					const arr = toArray(set);
-					const map = new Map<string, Array<SemVer>>();
-					for (const ver of arr) {
-						let key: string;
-						switch (strategy) {
-							case "major":
-								key = `${ver.major}`;
-								break;
-							case "minor":
-								key = `${ver.major}.${ver.minor}`;
-								break;
-							case "patch":
-								key = `${ver.major}.${ver.minor}.${ver.patch}`;
-								break;
+				Effect.flatMap(Ref.get(ref), (set) =>
+					Effect.map(requireNonEmptySet(set), (arr) => {
+						const map = new Map<string, ReadonlyArray<SemVer>>();
+						for (const ver of arr) {
+							let key: string;
+							switch (strategy) {
+								case "major":
+									key = `${ver.major}`;
+									break;
+								case "minor":
+									key = `${ver.major}.${ver.minor}`;
+									break;
+								case "patch":
+									key = `${ver.major}.${ver.minor}.${ver.patch}`;
+									break;
+							}
+							const existing = map.get(key);
+							map.set(key, existing ? [...existing, ver] : [ver]);
 						}
-						const group = map.get(key);
-						if (group) {
-							group.push(ver);
-						} else {
-							map.set(key, [ver]);
-						}
-					}
-					return Effect.succeed(map as Map<string, ReadonlyArray<SemVer>>);
-				}),
+						return map;
+					}),
+				),
 
 			latestByMajor: () =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					if (SortedSet.size(set) === 0) {
-						return Effect.fail(new EmptyCacheError());
-					}
-					const arr = toArray(set);
-					const map = new Map<number, SemVer>();
-					for (const ver of arr) {
-						map.set(ver.major, ver);
-					}
-					return Effect.succeed(Array.from(map.values()));
-				}),
+				Effect.flatMap(Ref.get(ref), (set) =>
+					Effect.map(requireNonEmptySet(set), (arr) => {
+						const map = new Map<number, SemVer>();
+						for (const ver of arr) {
+							map.set(ver.major, ver);
+						}
+						return Array.from(map.values());
+					}),
+				),
 
 			latestByMinor: () =>
-				Effect.flatMap(Ref.get(ref), (set) => {
-					if (SortedSet.size(set) === 0) {
-						return Effect.fail(new EmptyCacheError());
-					}
-					const arr = toArray(set);
-					const map = new Map<string, SemVer>();
-					for (const ver of arr) {
-						map.set(`${ver.major}.${ver.minor}`, ver);
-					}
-					return Effect.succeed(Array.from(map.values()));
-				}),
+				Effect.flatMap(Ref.get(ref), (set) =>
+					Effect.map(requireNonEmptySet(set), (arr) => {
+						const map = new Map<string, SemVer>();
+						for (const ver of arr) {
+							map.set(`${ver.major}.${ver.minor}`, ver);
+						}
+						return Array.from(map.values());
+					}),
+				),
 
 			diff: (a, b) =>
 				Effect.flatMap(Ref.get(ref), (set) => {

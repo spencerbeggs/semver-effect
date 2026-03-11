@@ -61,7 +61,11 @@ export interface VersionCache {
 	readonly resolve: (range: Range) => Effect.Effect<SemVer, UnsatisfiedRangeError>;
 	/** Parse a range string and resolve it. Fails with {@link InvalidRangeError} or {@link UnsatisfiedRangeError}. */
 	readonly resolveString: (input: string) => Effect.Effect<SemVer, InvalidRangeError | UnsatisfiedRangeError>;
-	/** Return all cached versions satisfying a {@link Range}. Fails with {@link EmptyCacheError} if cache is empty. */
+	/**
+	 * Return all cached versions satisfying a {@link Range}.
+	 * Fails with {@link EmptyCacheError} if the cache is empty (nothing loaded).
+	 * Returns an empty array if the cache is non-empty but no versions match.
+	 */
 	readonly filter: (range: Range) => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
 
 	// Grouping

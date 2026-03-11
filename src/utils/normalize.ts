@@ -31,6 +31,8 @@ const removeDuplicates = (set: ReadonlyArray<Comparator>): ReadonlyArray<Compara
 	return set.filter((c) => {
 		const v = c.version;
 		const pre = v.prerelease.length > 0 ? `-${v.prerelease.join(".")}` : "";
+		// Build metadata is ignored per SemVer §10 — comparators differing
+		// only in build metadata are semantically identical constraints.
 		const key = `${c.operator}${v.major}.${v.minor}.${v.patch}${pre}`;
 		if (seen.has(key)) return false;
 		seen.add(key);

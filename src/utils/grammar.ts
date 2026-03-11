@@ -136,7 +136,7 @@ const makeParseBuildIdentifier =
 			}
 
 			while (peekIdentChar(s)) {
-				token += advance(s);
+				token += advance(s) ?? "";
 			}
 
 			if (token.length === 0) {
