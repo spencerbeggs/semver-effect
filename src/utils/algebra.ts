@@ -60,13 +60,58 @@ const isSetSatisfiable = (set: ReadonlyArray<Comparator>): boolean => {
 	return true;
 };
 
-/** Combine two ranges with OR semantics (union of comparator sets). */
+/**
+ * Combine two {@link Range}s with OR semantics (union of comparator sets).
+ *
+ * The resulting range matches any version that satisfies either input range.
+ * Internally, this concatenates the comparator sets from both ranges.
+ *
+ * @example
+ * ```typescript
+ * import { union, parseRange } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const a = yield* parseRange("^1.0.0");
+ *   const b = yield* parseRange("^2.0.0");
+ *   const combined = union(a, b);
+ *   // combined matches versions satisfying ^1.0.0 OR ^2.0.0
+ * });
+ * ```
+ *
+ * @see {@link intersect}
+ * @see {@link equivalent}
+ */
 export const union: {
 	(b: Range): (a: Range) => Range;
 	(a: Range, b: Range): Range;
 } = Fn.dual(2, (a: Range, b: Range): Range => makeRange([...a.sets, ...b.sets]));
 
-/** Cross-product intersection of two ranges; fails when no satisfiable set remains. */
+/**
+ * Compute the intersection of two {@link Range}s using a cross-product of
+ * their comparator sets.
+ *
+ * The resulting range matches only versions that satisfy both input ranges.
+ * Returns an {@link Effect.Effect} that fails with
+ * {@link UnsatisfiableConstraintError} when no satisfiable comparator set
+ * remains after intersection.
+ *
+ * @example
+ * ```typescript
+ * import { intersect, parseRange } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const a = yield* parseRange(">=1.0.0");
+ *   const b = yield* parseRange("<2.0.0");
+ *   const both = yield* intersect(a, b);
+ *   // both matches >=1.0.0 AND <2.0.0
+ * });
+ * ```
+ *
+ * @see {@link union}
+ * @see {@link UnsatisfiableConstraintError}
+ */
 export const intersect: {
 	(b: Range): (a: Range) => Effect.Effect<Range, UnsatisfiableConstraintError>;
 	(a: Range, b: Range): Effect.Effect<Range, UnsatisfiableConstraintError>;
@@ -130,7 +175,16 @@ const isComparatorSetSubset = (sub: ReadonlyArray<Comparator>, sup: ReadonlyArra
 	return true;
 };
 
-/** Check whether every version matched by `sub` is also matched by `sup`. */
+/**
+ * Check whether every version matched by `sub` is also matched by `sup`.
+ *
+ * Returns `true` if the `sub` range is a subset of (i.e., fully contained by)
+ * the `sup` range. This is determined by checking that every comparator set in
+ * `sub` is implied by at least one comparator set in `sup`.
+ *
+ * @see {@link equivalent}
+ * @see {@link intersect}
+ */
 export const isSubset: {
 	(sup: Range): (sub: Range) => boolean;
 	(sub: Range, sup: Range): boolean;
@@ -142,13 +196,29 @@ export const isSubset: {
 	return true;
 });
 
-/** Two ranges are equivalent when each is a subset of the other. */
+/**
+ * Test whether two {@link Range}s are semantically equivalent.
+ *
+ * Two ranges are equivalent when each is a {@link isSubset | subset} of the other,
+ * meaning they match exactly the same set of versions.
+ *
+ * @see {@link isSubset}
+ */
 export const equivalent: {
 	(b: Range): (a: Range) => boolean;
 	(a: Range, b: Range): boolean;
 } = Fn.dual(2, (a: Range, b: Range): boolean => isSubset(a, b) && isSubset(b, a));
 
-/** Remove redundant comparator sets from a range. */
+/**
+ * Remove redundant comparator sets from a {@link Range}.
+ *
+ * A comparator set is considered redundant if another set in the range is a
+ * subset of it (i.e., the other set is more restrictive and already covered).
+ * Returns a new range with only the non-redundant sets.
+ *
+ * @see {@link isSubset}
+ * @see {@link equivalent}
+ */
 export const simplify = (range: Range): Range => {
 	const sets = range.sets.filter((set, i) => {
 		return !range.sets.some((other, j) => i !== j && isComparatorSetSubset(other, set));

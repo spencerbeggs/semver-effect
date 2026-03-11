@@ -19,6 +19,32 @@ const requireNonEmpty = (set: SortedSet.SortedSet<SemVer>): Effect.Effect<Readon
 	return Effect.succeed(toArray(set));
 };
 
+/**
+ * Live Effect {@link Layer} that provides the {@link VersionCache} service.
+ *
+ * Backed by an Effect `Ref` containing a `SortedSet` ordered by {@link SemVerOrder}.
+ * Requires a {@link SemVerParser} in its dependency graph (used by `resolveString`
+ * to parse range strings).
+ *
+ * @example
+ * ```typescript
+ * import { VersionCache, VersionCacheLive, SemVerParserLive, parseVersion } from "semver-effect";
+ * import { Effect, Layer } from "effect";
+ *
+ * const AppLayer = Layer.merge(VersionCacheLive, SemVerParserLive);
+ *
+ * const program = Effect.gen(function* () {
+ *   const cache = yield* VersionCache;
+ *   const v = yield* parseVersion("1.0.0");
+ *   yield* cache.add(v);
+ *   const latest = yield* cache.latest();
+ * }).pipe(Effect.provide(AppLayer));
+ * ```
+ *
+ * @see {@link VersionCache}
+ * @see {@link SemVerParserLive}
+ * @see {@link https://effect.website/docs/context-management/layers | Effect Layers}
+ */
 export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = Layer.effect(
 	VersionCache,
 	Effect.gen(function* () {

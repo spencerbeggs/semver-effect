@@ -165,6 +165,33 @@ const parseBuild = (s: ParserState): Effect.Effect<Array<string>, InvalidVersion
 		return identifiers;
 	});
 
+/**
+ * Parse a string into a {@link SemVer} using a strict SemVer 2.0.0
+ * recursive-descent parser.
+ *
+ * Rejects `v`/`V` prefixes, `=` prefixes, leading zeros on numeric identifiers,
+ * and any input that does not fully consume as a valid `major.minor.patch[-prerelease][+build]`
+ * string. Returns an {@link Effect.Effect} that fails with {@link InvalidVersionError}
+ * on invalid input.
+ *
+ * This function is re-exported from the barrel as `parseVersion`.
+ *
+ * @example
+ * ```typescript
+ * import type { SemVer } from "semver-effect";
+ * import { parseVersion } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const v: SemVer = yield* parseVersion("1.2.3-beta.1+build.42");
+ *   console.log(v.toString()); // "1.2.3-beta.1+build.42"
+ * });
+ * ```
+ *
+ * @see {@link SemVer}
+ * @see {@link InvalidVersionError}
+ * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ */
 export const parseValidSemVer = (raw: string): Effect.Effect<SemVer, InvalidVersionError> =>
 	Effect.gen(function* () {
 		const trimmed = raw.trim();
@@ -580,6 +607,32 @@ export const parseRangeSet = (raw: string): Effect.Effect<Range, InvalidRangeErr
 		return new Range({ sets }, { disableValidation: true });
 	});
 
+/**
+ * Parse a string into a single {@link Comparator}.
+ *
+ * Accepts an optional operator prefix (`=`, `>`, `>=`, `<`, `<=`) followed by
+ * a complete `major.minor.patch[-prerelease][+build]` version string. Wildcards
+ * and range syntax (tilde, caret, hyphen, X-range) are not allowed.
+ *
+ * If no operator is specified, `"="` (exact match) is assumed.
+ *
+ * This function is re-exported from the barrel as `parseComparator`.
+ *
+ * @example
+ * ```typescript
+ * import { parseComparator } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const comp = yield* parseComparator(">=1.0.0");
+ *   console.log(comp.operator); // ">="
+ *   console.log(comp.version.toString()); // "1.0.0"
+ * });
+ * ```
+ *
+ * @see {@link Comparator}
+ * @see {@link InvalidComparatorError}
+ */
 export const parseSingleComparator = (raw: string): Effect.Effect<Comparator, InvalidComparatorError> =>
 	Effect.gen(function* () {
 		const trimmed = raw.trim();

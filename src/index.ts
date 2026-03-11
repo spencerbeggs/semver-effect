@@ -1,8 +1,34 @@
 /**
- * semver-effect
+ * **semver-effect** -- Strict SemVer 2.0.0 implementation built on Effect.
  *
- * Strict SemVer 2.0.0 implementation built on Effect, providing typed
- * parsing, range algebra, and version cache services.
+ * Provides typed parsing, range algebra, version comparison, bump utilities,
+ * and an in-memory version cache service.
+ *
+ * ## Key divergences from node-semver
+ *
+ * - Only SemVer 2.0.0 is supported (no loose parsing, no `v`-prefix coercion).
+ * - All effectful operations return `Effect` types, not plain values.
+ * - Prerelease comparison follows the spec strictly (no coercion).
+ * - Build metadata is preserved but ignored in comparisons per the spec.
+ * - Range syntax follows node-semver conventions but enforcement is strict.
+ *
+ * ## Quick start
+ *
+ * ```typescript
+ * import { parseVersion, parseRange, satisfies, compare, bumpMinor } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const v = yield* parseVersion("1.2.3");
+ *   const range = yield* parseRange("^1.0.0");
+ *   console.log(satisfies(v, range)); // true
+ *   console.log(compare(v, yield* parseVersion("2.0.0"))); // -1
+ *   console.log(bumpMinor(v).toString()); // "1.3.0"
+ * });
+ * ```
+ *
+ * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @see {@link https://effect.website | Effect}
  *
  * @packageDocumentation
  */
@@ -10,52 +36,42 @@
 // Errors
 export {
 	EmptyCacheError,
-	/** @internal */
 	EmptyCacheErrorBase,
 } from "./errors/EmptyCacheError.js";
 export {
 	InvalidBumpError,
-	/** @internal */
 	InvalidBumpErrorBase,
 } from "./errors/InvalidBumpError.js";
 export {
 	InvalidComparatorError,
-	/** @internal */
 	InvalidComparatorErrorBase,
 } from "./errors/InvalidComparatorError.js";
 export {
 	InvalidPrereleaseError,
-	/** @internal */
 	InvalidPrereleaseErrorBase,
 } from "./errors/InvalidPrereleaseError.js";
 export {
 	InvalidRangeError,
-	/** @internal */
 	InvalidRangeErrorBase,
 } from "./errors/InvalidRangeError.js";
 export {
 	InvalidVersionError,
-	/** @internal */
 	InvalidVersionErrorBase,
 } from "./errors/InvalidVersionError.js";
 export {
 	UnsatisfiableConstraintError,
-	/** @internal */
 	UnsatisfiableConstraintErrorBase,
 } from "./errors/UnsatisfiableConstraintError.js";
 export {
 	UnsatisfiedRangeError,
-	/** @internal */
 	UnsatisfiedRangeErrorBase,
 } from "./errors/UnsatisfiedRangeError.js";
 export {
 	VersionFetchError,
-	/** @internal */
 	VersionFetchErrorBase,
 } from "./errors/VersionFetchError.js";
 export {
 	VersionNotFoundError,
-	/** @internal */
 	VersionNotFoundErrorBase,
 } from "./errors/VersionNotFoundError.js";
 // Layers

@@ -4,6 +4,40 @@ const NonNegativeInt = Schema.Int.pipe(Schema.filter((n) => n >= 0));
 
 const PrereleaseItem = Schema.Union(Schema.String, NonNegativeInt);
 
+/**
+ * A parsed SemVer 2.0.0 version, represented as an Effect `Schema.TaggedClass`.
+ *
+ * Implements structural equality via {@link Equal.Equal} (build metadata is
+ * excluded from equality checks per the SemVer spec) and is hashable via
+ * {@link Hash.Hash}.
+ *
+ * @remarks
+ * All numeric fields (`major`, `minor`, `patch`) must be non-negative integers.
+ * Prerelease identifiers may be strings or non-negative integers. Build metadata
+ * identifiers are always strings. Build metadata is preserved but ignored in all
+ * comparison and equality operations, per SemVer 2.0.0 section 10.
+ *
+ * Unlike node-semver, this implementation does not support loose parsing or
+ * `v`-prefixed strings. Only strictly valid SemVer 2.0.0 strings are accepted.
+ *
+ * @example
+ * ```typescript
+ * import type { SemVer } from "semver-effect";
+ * import { parseVersion } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const v: SemVer = yield* parseVersion("1.2.3-alpha.1+build.42");
+ *   console.log(v.major);      // 1
+ *   console.log(v.prerelease); // ["alpha", 1]
+ *   console.log(v.build);      // ["build", "42"]
+ *   console.log(v.toString()); // "1.2.3-alpha.1+build.42"
+ * });
+ * ```
+ *
+ * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @see {@link https://effect.website/docs/schema/classes | Effect Schema.TaggedClass}
+ */
 export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 	major: NonNegativeInt,
 	minor: NonNegativeInt,

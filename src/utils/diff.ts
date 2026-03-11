@@ -14,6 +14,28 @@ const classifyDiff = (a: SemVer, b: SemVer): "major" | "minor" | "patch" | "prer
 	return "none";
 };
 
+/**
+ * Compute the difference between two {@link SemVer} versions.
+ *
+ * Returns a {@link VersionDiff} containing the type of change (major, minor,
+ * patch, prerelease, build, or none) and signed numeric deltas for each field.
+ *
+ * @example
+ * ```typescript
+ * import { diff, parseVersion } from "semver-effect";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const a = yield* parseVersion("1.2.3");
+ *   const b = yield* parseVersion("1.3.0");
+ *   const d = diff(a, b);
+ *   console.log(d.type);  // "minor"
+ *   console.log(d.minor); // 1
+ * });
+ * ```
+ *
+ * @see {@link VersionDiff}
+ */
 export const diff: {
 	(b: SemVer): (a: SemVer) => VersionDiff;
 	(a: SemVer, b: SemVer): VersionDiff;

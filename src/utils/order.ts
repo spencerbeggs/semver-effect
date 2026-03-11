@@ -11,6 +11,26 @@ const comparePrereleaseIdentifier = (a: string | number, b: string | number): nu
 	return 1;
 };
 
+/**
+ * Effect {@link Order.Order} instance for {@link SemVer} following SemVer 2.0.0
+ * precedence rules.
+ *
+ * Compares `major.minor.patch` numerically, then prerelease identifiers per
+ * the spec (numeric identifiers compared as integers, string identifiers
+ * compared lexicographically, numeric always lower than string). Build metadata
+ * is ignored.
+ *
+ * @remarks
+ * Prerelease comparison follows the SemVer 2.0.0 specification strictly:
+ * - A version with prerelease has lower precedence than the same version without.
+ * - Identifiers are compared left-to-right; numeric precedes alphanumeric.
+ * - A shorter set of identifiers has lower precedence than a longer one when all
+ *   preceding identifiers are equal.
+ *
+ * @see {@link SemVerOrderWithBuild}
+ * @see {@link compare}
+ * @see {@link https://semver.org/#spec-item-11 | SemVer 2.0.0 Section 11}
+ */
 export const SemVerOrder: Order.Order<SemVer> = Order.make((a, b) => {
 	// 1. Compare major.minor.patch
 	if (a.major !== b.major) return a.major < b.major ? -1 : 1;
@@ -38,6 +58,18 @@ export const SemVerOrder: Order.Order<SemVer> = Order.make((a, b) => {
 	return 0;
 });
 
+/**
+ * Effect {@link Order.Order} instance for {@link SemVer} that additionally
+ * compares build metadata when versions are otherwise equal.
+ *
+ * Per SemVer 2.0.0, build metadata SHOULD be ignored for precedence. This
+ * order is provided for cases where a total ordering including build metadata
+ * is needed (e.g., deduplication). Build identifiers are compared
+ * lexicographically; a version with no build metadata sorts before one with it.
+ *
+ * @see {@link SemVerOrder}
+ * @see {@link compareWithBuild}
+ */
 export const SemVerOrderWithBuild: Order.Order<SemVer> = Order.make((a, b) => {
 	const base = SemVerOrder(a, b);
 	if (base !== 0) return base;
