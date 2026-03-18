@@ -1,68 +1,22 @@
 import { Function as Fn, Option } from "effect";
-import type { Comparator } from "../schemas/Comparator.js";
 import type { Range } from "../schemas/Range.js";
 import type { SemVer } from "../schemas/SemVer.js";
-import { SemVerOrder } from "./order.js";
-
-const satisfiesComparator = (version: SemVer, comp: Comparator): boolean => {
-	const cmp = SemVerOrder(version, comp.version);
-	switch (comp.operator) {
-		case "=":
-			return cmp === 0;
-		case ">":
-			return cmp > 0;
-		case ">=":
-			return cmp >= 0;
-		case "<":
-			return cmp < 0;
-		case "<=":
-			return cmp <= 0;
-	}
-};
-
-const satisfiesComparatorSet = (version: SemVer, set: ReadonlyArray<Comparator>): boolean => {
-	// Empty set matches all
-	if (set.length === 0) return true;
-
-	// Prerelease tuple restriction:
-	// If version has prerelease, at least one comparator in the set must
-	// have prerelease AND share the same [major, minor, patch] tuple.
-	if (version.prerelease.length > 0) {
-		const hasTupleMatch = set.some(
-			(c) =>
-				c.version.prerelease.length > 0 &&
-				c.version.major === version.major &&
-				c.version.minor === version.minor &&
-				c.version.patch === version.patch,
-		);
-		if (!hasTupleMatch) return false;
-	}
-
-	// All comparators must be satisfied (AND semantics)
-	return set.every((c) => satisfiesComparator(version, c));
-};
 
 /**
  * Test whether a {@link SemVer} version satisfies a {@link Range}.
  *
- * A version satisfies a range if it matches at least one of the range's
- * comparator sets (OR semantics). Within a comparator set, all comparators
- * must be satisfied (AND semantics).
- *
- * Prerelease versions are subject to the "tuple restriction": a prerelease
- * version only matches a comparator set if at least one comparator in that set
- * also has a prerelease tag on the same `major.minor.patch` tuple. This follows
- * the node-semver convention for prerelease handling.
+ * For the instance method alternative, use `range.test(version)`.
  *
  * @example
  * ```typescript
- * import { Range, SemVer } from "semver-effect";
+ * import { SemVer, Range } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* SemVer.fromString("1.5.0");
- *   const r = yield* Range.fromString("^1.0.0");
- *   console.log(Range.satisfies(v, r)); // true
+ *   const v = yield* SemVer.parse("1.5.0");
+ *   const r = yield* Range.parse("^1.0.0");
+ *   console.log(r.test(v));        // true  (instance method)
+ *   console.log(satisfies(v, r));  // true  (standalone function)
  * });
  * ```
  *
@@ -73,24 +27,19 @@ const satisfiesComparatorSet = (version: SemVer, set: ReadonlyArray<Comparator>)
 export const satisfies: {
 	(range: Range): (version: SemVer) => boolean;
 	(version: SemVer, range: Range): boolean;
-} = Fn.dual(2, (version: SemVer, range: Range): boolean =>
-	range.sets.some((set) => satisfiesComparatorSet(version, set)),
-);
+} = Fn.dual(2, (version: SemVer, range: Range): boolean => range.test(version));
 
 /**
  * Filter an array of {@link SemVer} versions to only those satisfying a {@link Range}.
  *
+ * For the instance method alternative, use `range.filter(versions)`.
+ *
  * @see {@link satisfies}
- * @see {@link maxSatisfying}
- * @see {@link minSatisfying}
  */
 export const filter: {
-	(range: Range): (versions: ReadonlyArray<SemVer>) => Array<SemVer>;
-	(versions: ReadonlyArray<SemVer>, range: Range): Array<SemVer>;
-} = Fn.dual(
-	2,
-	(versions: ReadonlyArray<SemVer>, range: Range): Array<SemVer> => versions.filter((v) => satisfies(v, range)),
-);
+	(range: Range): (versions: ReadonlyArray<SemVer>) => ReadonlyArray<SemVer>;
+	(versions: ReadonlyArray<SemVer>, range: Range): ReadonlyArray<SemVer>;
+} = Fn.dual(2, (versions: ReadonlyArray<SemVer>, range: Range): ReadonlyArray<SemVer> => range.filter(versions));
 
 /**
  * Find the highest {@link SemVer} version satisfying a {@link Range}.
@@ -106,8 +55,8 @@ export const maxSatisfying: {
 } = Fn.dual(2, (versions: ReadonlyArray<SemVer>, range: Range): Option.Option<SemVer> => {
 	let best: SemVer | null = null;
 	for (const v of versions) {
-		if (satisfies(v, range)) {
-			if (best === null || SemVerOrder(v, best) > 0) best = v;
+		if (range.test(v)) {
+			if (best === null || v.compare(best) > 0) best = v;
 		}
 	}
 	return best === null ? Option.none() : Option.some(best);
@@ -127,8 +76,8 @@ export const minSatisfying: {
 } = Fn.dual(2, (versions: ReadonlyArray<SemVer>, range: Range): Option.Option<SemVer> => {
 	let best: SemVer | null = null;
 	for (const v of versions) {
-		if (satisfies(v, range)) {
-			if (best === null || SemVerOrder(v, best) < 0) best = v;
+		if (range.test(v)) {
+			if (best === null || v.compare(best) < 0) best = v;
 		}
 	}
 	return best === null ? Option.none() : Option.some(best);

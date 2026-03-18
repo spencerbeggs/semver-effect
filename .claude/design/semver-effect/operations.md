@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-11
-last-synced: 2026-03-11
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -55,20 +55,44 @@ layers and provide the primary user-facing functionality.
 
 **Key Characteristics:**
 
+- All operations are available as instance/static methods on schema classes
+  (primary API) and as standalone functions for pipe composition (alternative)
 - Comparison and matching operations are pure functions with no error channel
 - Range algebra: `intersect` returns Effect (can fail), `union`/`simplify`/
   `isSubset`/`equivalent` are pure
 - Bump operations are pure functions (no Effect wrapper)
-- All binary operations use `Function.dual` for data-first/data-last support
-- All operations are accessed through namespace modules: `SemVer.gt()`,
-  `Range.satisfies()`, `SemVer.bump.major()`, `PrettyPrint.prettyPrint()`.
-  No standalone function exports exist in the public API.
+- All binary standalone functions use `Function.dual` for data-first/data-last support
+- All operations are exported as flat named exports from `src/index.ts`.
+  Users import directly: `import { SemVer, Range, gt, satisfies } from "semver-effect"`.
 
-**Public API Access (namespace modules):**
+**Public API Access:**
 
-- `SemVer.*` -- comparison, collection, diff, bump, ordering, Schema transforms
-- `Range.*` -- matching, algebra, Schema transforms
-- `PrettyPrint.*` -- pretty printing
+*Class-based API (primary):*
+
+- SemVer instance: `v.compare()`, `v.gt()`, `v.gte()`, `v.lt()`, `v.lte()`,
+  `v.eq()`, `v.neq()`, `v.isPrerelease`, `v.isStable`, `v.bump.major()`,
+  `v.bump.minor()`, `v.bump.patch()`, `v.bump.prerelease()`, `v.bump.release()`
+- SemVer static: `SemVer.parse()`, `SemVer.compare()`, `SemVer.gt()`, etc.,
+  `SemVer.sort()`, `SemVer.rsort()`, `SemVer.max()`, `SemVer.min()`,
+  `SemVer.diff()`
+- Range instance: `range.test()`, `range.filter()`
+- Range static: `Range.parse()`, `Range.satisfies()`, `Range.filter()`,
+  `Range.maxSatisfying()`, `Range.minSatisfying()`
+- Comparator instance: `comp.test()`
+- Comparator static: `Comparator.parse()`
+
+*Standalone functions (for pipe composition):*
+
+- Comparison: `compare`, `equal`, `gt`, `gte`, `lt`, `lte`, `neq`, `sort`,
+  `rsort`, `max`, `min`, `isPrerelease`, `isStable`, `truncate`,
+  `compareWithBuild`
+- Matching: `satisfies`, `filter`, `maxSatisfying`, `minSatisfying`
+- Algebra: `union`, `intersect`, `simplify`, `isSubset`, `equivalent`
+- Bumping: `bumpMajor`, `bumpMinor`, `bumpPatch`, `bumpPrerelease`,
+  `bumpRelease`
+- Diffing: `diff`
+- Ordering: `SemVerOrder`, `SemVerOrderWithBuild`
+- Pretty-printing: `prettyPrint`
 
 **Internal File Locations:**
 
@@ -118,14 +142,13 @@ return `Option<SemVer>`. "No match" is a normal outcome, not an error.
 (`UnsatisfiableConstraintError`). `union`, `simplify`, `isSubset`, and
 `equivalent` cannot fail and are pure functions.
 
-### Why Bump Operations Are in a Sub-Namespace
+### Why Bump Operations Are Instance Methods with Standalone Wrappers
 
-Bump operations are grouped under `SemVer.bump.*` (`SemVer.bump.major`,
-`SemVer.bump.minor`, etc.) rather than being top-level on `SemVer` or static
-methods on the class. This follows the Effect convention of grouping related
-operations and keeps the `SemVer` namespace organized. Internally they are
-standalone functions in `src/utils/bump.ts`; the `SemVer.bump` object in
-`src/SemVer.ts` simply collects them.
+Bump operations are implemented as instance methods via the `v.bump` getter
+(returning a `SemVerBump` helper class in `src/schemas/SemVer.ts`). The
+standalone functions (`bumpMajor`, `bumpMinor`, etc.) in `src/utils/bump.ts`
+are thin wrappers that delegate to the instance methods, providing the
+functional/pipe-compatible interface as an alternative.
 
 ---
 
@@ -133,25 +156,50 @@ standalone functions in `src/utils/bump.ts`; the `SemVer.bump` object in
 
 ### API Surface
 
-Accessed via the `SemVer` namespace. All binary operations use
-`Function.dual(2, ...)` for data-first/data-last:
+*Instance methods on SemVer (primary):*
 
 ```text
-SemVer.compare(self, that): -1 | 0 | 1
-SemVer.equal(self, that): boolean
-SemVer.gt(self, that): boolean
-SemVer.gte(self, that): boolean
-SemVer.lt(self, that): boolean
-SemVer.lte(self, that): boolean
-SemVer.neq(self, that): boolean
-SemVer.isPrerelease(v): boolean
-SemVer.isStable(v): boolean
-SemVer.truncate(v, level): SemVer
+v.compare(that): -1 | 0 | 1
+v.gt(that): boolean
+v.gte(that): boolean
+v.lt(that): boolean
+v.lte(that): boolean
+v.eq(that): boolean
+v.neq(that): boolean
+v.isPrerelease: boolean (getter)
+v.isStable: boolean (getter)
+```
+
+*Static methods on SemVer:*
+
+```text
+SemVer.compare(self, that): -1 | 0 | 1  (dual)
+SemVer.equal(self, that): boolean  (dual)
+SemVer.gt / gte / lt / lte / neq: (dual)
 SemVer.sort(versions): Array<SemVer>
 SemVer.rsort(versions): Array<SemVer>
 SemVer.max(versions): Option<SemVer>
 SemVer.min(versions): Option<SemVer>
-SemVer.compareWithBuild(self, that): -1 | 0 | 1
+```
+
+*Standalone functions (for pipe composition):*
+
+```text
+compare(self, that): -1 | 0 | 1
+equal(self, that): boolean
+gt(self, that): boolean
+gte(self, that): boolean
+lt(self, that): boolean
+lte(self, that): boolean
+neq(self, that): boolean
+isPrerelease(v): boolean
+isStable(v): boolean
+truncate(v, level): SemVer
+sort(versions): Array<SemVer>
+rsort(versions): Array<SemVer>
+max(versions): Option<SemVer>
+min(versions): Option<SemVer>
+compareWithBuild(self, that): -1 | 0 | 1
 ```
 
 **Internal implementation:** `src/utils/compare.ts`
@@ -171,18 +219,16 @@ SemVer.compareWithBuild(self, that): -1 | 0 | 1
 
 ### Order & Equivalence Instances
 
-Accessed via the `SemVer` namespace:
+Exported as flat named constants:
 
-- **`SemVer.Order`**: Standard SemVer 2.0.0 precedence. Build metadata ignored.
-  (Internally: `SemVerOrder` from `src/utils/order.ts`.)
-- **`SemVer.OrderWithBuild`**: Extends standard comparison with lexicographic
+- **`SemVerOrder`**: Standard SemVer 2.0.0 precedence. Build metadata ignored.
+  (From `src/utils/order.ts`.)
+- **`SemVerOrderWithBuild`**: Extends standard comparison with lexicographic
   build metadata comparison when versions are otherwise equal. No build
   metadata sorts before having build metadata.
-  (Internally: `SemVerOrderWithBuild` from `src/utils/order.ts`.)
-- **`SemVer.Equivalence`**: `Equivalence<SemVer>` instance that delegates to
-  `SemVer.equal`.
+  (From `src/utils/order.ts`.)
 
-`Order` and `OrderWithBuild` are `Order.Order<SemVer>` instances.
+Both are `Order.Order<SemVer>` instances.
 
 ### Collection Helpers
 
@@ -210,18 +256,41 @@ Build metadata excluded per spec. Delegates to `Equal.equals`.
 
 ### API Surface
 
-Accessed via the `Range` namespace:
+*Instance methods on Range (primary):*
 
 ```text
-Range.satisfies(version, range): boolean
-Range.filter(versions, range): Array<SemVer>
-Range.maxSatisfying(versions, range): Option<SemVer>
-Range.minSatisfying(versions, range): Option<SemVer>
+range.test(version): boolean
+range.filter(versions): ReadonlyArray<SemVer>
 ```
 
-All use `Function.dual(2, ...)`.
+*Instance method on Comparator:*
 
-**Internal implementation:** `src/utils/matching.ts`
+```text
+comp.test(version): boolean
+```
+
+*Static methods on Range:*
+
+```text
+Range.satisfies(version, range): boolean  (dual)
+Range.filter(versions, range): ReadonlyArray<SemVer>  (dual)
+Range.maxSatisfying(versions, range): Option<SemVer>  (dual)
+Range.minSatisfying(versions, range): Option<SemVer>  (dual)
+```
+
+*Standalone functions (for pipe composition):*
+
+```text
+satisfies(version, range): boolean
+filter(versions, range): Array<SemVer>
+maxSatisfying(versions, range): Option<SemVer>
+minSatisfying(versions, range): Option<SemVer>
+```
+
+All standalone functions use `Function.dual(2, ...)`.
+
+**Internal implementation:** `src/utils/matching.ts` (standalone functions
+delegate to `range.test()` and `range.filter()` instance methods)
 
 ### Matching Algorithm
 
@@ -257,14 +326,14 @@ misconfiguration errors.
 
 ### API Surface
 
-Accessed via the `Range` namespace:
+Exported as flat named functions:
 
 ```text
-Range.union(a, b): Range
-Range.intersect(a, b): Effect<Range, UnsatisfiableConstraintError>
-Range.simplify(range): Range
-Range.isSubset(sub, sup): boolean
-Range.equivalent(a, b): boolean
+union(a, b): Range
+intersect(a, b): Effect<Range, UnsatisfiableConstraintError>
+simplify(range): Range
+isSubset(sub, sup): boolean
+equivalent(a, b): boolean
 ```
 
 `union`, `simplify`, `isSubset`, and `equivalent` are pure functions.
@@ -304,37 +373,45 @@ ComparatorSet in `sup`. Uses comparator implication logic.
 
 ### API Surface
 
-Accessed via the `SemVer.bump` sub-namespace:
+*Instance methods on SemVer via `v.bump` (primary):*
 
 ```text
-SemVer.bump.major(v): SemVer
-SemVer.bump.minor(v): SemVer
-SemVer.bump.patch(v): SemVer
-SemVer.bump.prerelease(v, id?): SemVer
-SemVer.bump.release(v): SemVer
+v.bump.major(): SemVer
+v.bump.minor(): SemVer
+v.bump.patch(): SemVer
+v.bump.prerelease(id?): SemVer
+v.bump.release(): SemVer
 ```
 
-All are pure functions returning new SemVer instances. Since Data.TaggedClass
-constructors have no runtime schema validation, bumped values are constructed
-directly from computed fields that are correct by construction.
+*Standalone functions (for pipe composition):*
 
-The `bump` sub-namespace is a plain object on the `SemVer` namespace module
-(`src/SemVer.ts`), grouping the functions from `src/utils/bump.ts`.
+```text
+bumpMajor(v): SemVer
+bumpMinor(v): SemVer
+bumpPatch(v): SemVer
+bumpPrerelease(v, id?): SemVer
+bumpRelease(v): SemVer
+```
 
-**Internal implementation:** `src/utils/bump.ts`
+All are pure functions returning new SemVer instances. The standalone functions
+delegate to the instance methods. Bumped values are constructed via the
+`SemVerBump` helper class (returned by the `v.bump` getter).
+
+**Internal implementation:** Instance methods in `src/schemas/SemVer.ts`
+(`SemVerBump` class). Standalone wrappers in `src/utils/bump.ts`.
 
 ### Bump Rules
 
-**`SemVer.bump.major`**: Increments major, resets minor/patch to 0, clears
+**`bumpMajor`**: Increments major, resets minor/patch to 0, clears
 prerelease/build. `1.2.3-alpha` -> `2.0.0`.
 
-**`SemVer.bump.minor`**: Increments minor, resets patch to 0, clears
+**`bumpMinor`**: Increments minor, resets patch to 0, clears
 prerelease/build. `1.2.3-alpha` -> `1.3.0`.
 
-**`SemVer.bump.patch`**: Increments patch, clears prerelease/build.
+**`bumpPatch`**: Increments patch, clears prerelease/build.
 `1.2.3-alpha` -> `1.2.4`.
 
-**`SemVer.bump.prerelease(v, id?)`**:
+**`bumpPrerelease(v, id?)`**:
 
 - No prerelease, no id: bump patch, add `[0]`. `1.0.0` -> `1.0.1-0`
 - No prerelease, with id: bump patch, add `[id, 0]`. `1.0.0` -> `1.0.1-beta.0`
@@ -343,7 +420,7 @@ prerelease/build. `1.2.3-alpha` -> `1.3.0`.
 - Has prerelease, different id: reset to `[id, 0]`.
   `1.0.0-alpha.1` with id `"beta"` -> `1.0.0-beta.0`
 
-**`SemVer.bump.release`**: Strips prerelease and build, keeps version numbers.
+**`bumpRelease`**: Strips prerelease and build, keeps version numbers.
 `1.2.3-alpha.1+build` -> `1.2.3`.
 
 ---
@@ -352,10 +429,16 @@ prerelease/build. `1.2.3-alpha` -> `1.3.0`.
 
 ### API Surface
 
-Accessed via the `SemVer` namespace:
+*Static method on SemVer (primary):*
 
 ```text
-SemVer.diff(a, b): VersionDiff
+SemVer.diff(a, b): VersionDiff  (dual)
+```
+
+*Standalone function (for pipe composition):*
+
+```text
+diff(a, b): VersionDiff
 ```
 
 Uses `Function.dual(2, ...)`. Pure function -- always produces a result.
@@ -383,11 +466,11 @@ Delta fields are signed: `b.field - a.field`.
 
 ### API Surface
 
-Accessed via the `PrettyPrint` namespace:
+Exported as a flat named function:
 
 ```text
-PrettyPrint.prettyPrint(value: Printable): string
-type PrettyPrint.Printable = SemVer | Comparator | Range | VersionDiff
+prettyPrint(value: Printable): string
+type Printable = SemVer | Comparator | Range | VersionDiff
 ```
 
 Uses `Match.type<Printable>()` with `Match.tag` for each type and
@@ -438,4 +521,6 @@ Rule: caret allows changes to the right of the leftmost non-zero component.
 ---
 
 **Document Status:** Current -- covers all six operation categories as
-implemented. All operations are tested.
+implemented. All operations are available as instance/static methods on schema
+classes (primary API) and as standalone functions for pipe composition. All
+operations are tested.

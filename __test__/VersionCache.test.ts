@@ -2,17 +2,17 @@ import { Effect, Layer, Option } from "effect";
 import { describe, expect, it } from "vitest";
 import { SemVerParserLive } from "../src/layers/SemVerParserLive.js";
 import { VersionCacheLive } from "../src/layers/VersionCacheLive.js";
-import * as Range from "../src/Range.js";
-import * as SemVer from "../src/SemVer.js";
 import { VersionCache } from "../src/services/VersionCache.js";
+import { parseRange } from "../src/utils/parseRange.js";
+import { make } from "./utils/make.js";
 
 const TestLayer = VersionCacheLive.pipe(Layer.provide(SemVerParserLive));
 
 const run = <A, E>(effect: Effect.Effect<A, E, VersionCache>) => Effect.runSync(Effect.provide(effect, TestLayer));
 
-const v = SemVer.make;
+const v = make;
 
-const r = (input: string) => Effect.runSync(Range.fromString(input));
+const r = (input: string) => Effect.runSync(parseRange(input));
 
 describe("VersionCache - Mutation", () => {
 	it("load replaces cache contents", () => {

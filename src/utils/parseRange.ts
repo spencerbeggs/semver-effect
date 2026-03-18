@@ -18,13 +18,13 @@ import { normalizeRange } from "./normalize.js";
  *
  * @example
  * ```typescript
- * import { Range, SemVer } from "semver-effect";
+ * import { parseRange, parseValidSemVer, satisfies } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const range = yield* Range.fromString("^1.0.0");
- *   const v = yield* SemVer.fromString("1.5.0");
- *   console.log(Range.satisfies(v, range)); // true
+ *   const range = yield* parseRange("^1.0.0");
+ *   const v = yield* parseValidSemVer("1.5.0");
+ *   console.log(satisfies(v, range)); // true
  * });
  * ```
  *

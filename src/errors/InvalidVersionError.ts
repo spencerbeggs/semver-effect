@@ -15,7 +15,7 @@ export const InvalidVersionErrorBase = Data.TaggedError("InvalidVersionError");
 /**
  * Indicates that a string could not be parsed as a valid SemVer 2.0.0 version.
  *
- * This error is returned when {@link parseVersion} (or the `SemVerParser` service)
+ * This error is returned when {@link parseValidSemVer} (or the `SemVerParser` service)
  * encounters input that does not conform to the `major.minor.patch[-prerelease][+build]`
  * format. Unlike node-semver, no loose parsing or `v`-prefix coercion is performed.
  *

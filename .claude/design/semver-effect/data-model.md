@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-11
-last-synced: 2026-03-11
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -17,7 +17,7 @@ dependencies: []
 
 Defines the immutable data types that form the foundation of semver-effect:
 SemVer, Comparator, ComparatorSet, Range, and VersionDiff. All types are
-Data.TaggedClass instances with Effect trait implementations.
+Schema.TaggedClass instances with Effect trait implementations.
 
 ## Table of Contents
 
@@ -39,7 +39,7 @@ Data.TaggedClass instances with Effect trait implementations.
 ## Overview
 
 The core data model provides the immutable, typed representations of SemVer
-2.0.0 concepts. Every type is a Data.TaggedClass, giving it automatic
+2.0.0 concepts. Every type is a Schema.TaggedClass, giving it automatic
 `_tag` discrimination and structural equality. The data model is the lowest
 layer of the package -- the parser produces these types, the VersionCache
 stores them, and all operations consume them.
@@ -51,6 +51,9 @@ stores them, and all operations consume them.
 - Prerelease identifiers preserve their original type (string vs number)
 - No optional fields on core types; prerelease and build default to `[]`
 - Every type carries a `_tag` field for pattern matching and serialization
+- Schema classes provide instance methods (comparison, bumping, testing) and
+  static methods (parsing, collection operations) as the primary API
+- Standalone functions are the same operations available for pipe composition
 
 **Source files:**
 
@@ -60,16 +63,9 @@ stores them, and all operations consume them.
   ComparatorSet type alias
 - `src/schemas/VersionDiff.ts` -- Structured diff between two versions
 - `src/utils/order.ts` -- SemVerOrder and SemVerOrderWithBuild instances
-- `src/SemVer.ts` -- namespace aggregation module (re-exports class, adds
-  `make`, `ZERO`, `fromString`, `bump.*`, `Order`, `Equivalence`, Schema
-  transforms `Instance`/`FromString`)
-- `src/Range.ts` -- namespace aggregation module (re-exports class, adds
-  `fromString`, `any`, matching/algebra ops, Schema transforms)
-- `src/Comparator.ts` -- namespace aggregation module (re-exports class, adds
-  `fromString`, `any`, Schema transforms)
-- `src/VersionDiff.ts` -- namespace aggregation module (re-exports class)
-- `src/index.ts` -- barrel file using `export * as SemVer` / `export * as Range`
-  etc. All internal imports go directly to source files.
+- `src/index.ts` -- barrel file with flat named exports. Classes are exported
+  directly: `export { SemVer } from "./schemas/SemVer.js"`. Functions are
+  exported directly from `utils/`. No namespace aggregation modules.
 
 ---
 
@@ -80,7 +76,7 @@ and serialization formats match the design spec.
 
 ### What Is Implemented
 
-- All Data.TaggedClass definitions (SemVer, Comparator, Range, VersionDiff)
+- All Schema.TaggedClass definitions (SemVer, Comparator, Range, VersionDiff)
 - Custom Equal and Hash overrides on SemVer (excluding build metadata)
 - Inspectable trait: toString, toJSON, nodejs.util.inspect.custom on SemVer
 - toString and nodejs.util.inspect.custom on Comparator, Range, VersionDiff
@@ -93,15 +89,15 @@ and serialization formats match the design spec.
 
 ## Rationale
 
-### Why Data.TaggedClass (Migration from Schema.TaggedClass)
+### Why Schema.TaggedClass
 
-Data.TaggedClass provides the features needed by the data model:
+Schema.TaggedClass provides the features needed by the data model:
 
 1. **Discriminated unions via `_tag`:** Every instance carries a `_tag`
    string literal, enabling `Effect.Match` and `switch` discrimination
    across types (SemVer vs Comparator vs Range).
 
-2. **Structural equality by default:** Data.TaggedClass instances compare
+2. **Structural equality by default:** Schema.TaggedClass instances compare
    by value, not by reference. This is critical for SemVer where
    `1.0.0+build1` must equal `1.0.0+build2`.
 
@@ -111,18 +107,15 @@ Data.TaggedClass provides the features needed by the data model:
 4. **Hash derivation:** Hash is derived from Equal, so SemVer instances
    work correctly in HashSet and HashMap without custom hash functions.
 
-**Why the migration from Schema.TaggedClass:** The original implementation
-used `Schema.TaggedClass<SemVer>()("SemVer", { ... })` which provides
-built-in Schema encode/decode. However, the forward self-reference
-`<SemVer>` in the generic parameter generates un-nameable `_base` types
-that break declaration bundling (api-extractor). The `_base` type cannot be
-extracted to a named export, causing "forgotten export" errors in the
-`.d.ts` rollup. `Data.TaggedClass("SemVer")` follows the same extracted
-base pattern already used for errors (`Data.TaggedError`) and services
-(`Context.GenericTag`) -- no forward reference is needed, so the base can
-be exported as a named constant. The Schema encode/decode capability was
-never used by consumers, so removing it has no API impact. The `ci:build`
-pipeline now passes cleanly with zero forgotten exports.
+5. **Built-in Schema support:** Schema.TaggedClass provides encode/decode
+   capabilities for serialization and validation. Fields are expressed as
+   Schema types (`Schema.Number`, `Schema.Array(Schema.String)`, etc.).
+
+6. **Single class declaration:** Unlike Data.TaggedClass which required a
+   split base pattern (`const FooBase = Data.TaggedClass("Foo")` +
+   `class Foo extends FooBase<{...}>`), Schema.TaggedClass uses a single
+   class expression: `class Foo extends Schema.TaggedClass<Foo>()("Foo", { ... })`.
+   No `@internal` Base export is needed for schema classes.
 
 ### Why Prerelease Is `ReadonlyArray<string | number>`
 
@@ -164,16 +157,36 @@ TaggedClass because:
 **Tag:** `"SemVer"`
 
 ```typescript
-/** @internal */
-export const SemVerBase = Data.TaggedClass("SemVer");
+export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
+  major: Schema.Number,
+  minor: Schema.Number,
+  patch: Schema.Number,
+  prerelease: Schema.Array(Schema.Union(Schema.String, Schema.Number)),
+  build: Schema.Array(Schema.String),
+}) {
+  // Static methods (wired in index.ts)
+  static parse: (input: string) => Effect<SemVer, InvalidVersionError>;
+  static compare: { (that: SemVer): (self: SemVer) => -1 | 0 | 1; (self: SemVer, that: SemVer): -1 | 0 | 1; };
+  static gt: { ... }; static gte: { ... }; static lt: { ... }; static lte: { ... };
+  static neq: { ... }; static equal: { ... }; static diff: { ... };
+  static sort: (versions: ReadonlyArray<SemVer>) => Array<SemVer>;
+  static rsort: (versions: ReadonlyArray<SemVer>) => Array<SemVer>;
+  static max: (versions: ReadonlyArray<SemVer>) => Option<SemVer>;
+  static min: (versions: ReadonlyArray<SemVer>) => Option<SemVer>;
 
-class SemVer extends SemVerBase<{
-  readonly major: number;
-  readonly minor: number;
-  readonly patch: number;
-  readonly prerelease: ReadonlyArray<string | number>;
-  readonly build: ReadonlyArray<string>;
-}> {
+  // Instance methods
+  compare(that: SemVer): -1 | 0 | 1 { /* ... */ }
+  gt(that: SemVer): boolean { /* ... */ }
+  gte(that: SemVer): boolean { /* ... */ }
+  lt(that: SemVer): boolean { /* ... */ }
+  lte(that: SemVer): boolean { /* ... */ }
+  eq(that: SemVer): boolean { /* ... */ }
+  neq(that: SemVer): boolean { /* ... */ }
+  get isPrerelease(): boolean { /* ... */ }
+  get isStable(): boolean { /* ... */ }
+  get bump(): SemVerBump { /* ... */ }
+
+  // Traits
   [Equal.symbol](that: Equal.Equal): boolean { /* ... */ }
   [Hash.symbol](): number { /* ... */ }
   toString(): string { /* ... */ }
@@ -182,16 +195,27 @@ class SemVer extends SemVerBase<{
 }
 ```
 
-**Split base pattern:** The `SemVerBase` constant is exported with
-`@internal` JSDoc so api-extractor can name the base type in the `.d.ts`
-rollup without exposing it as public API. This is the same pattern used for
-all error classes (`Data.TaggedError`) and services (`Context.GenericTag`).
+**Single class declaration:** Unlike error classes which use the split base
+pattern, Schema.TaggedClass data types are declared as a single class with
+no separate Base export. There is no `SemVerBase`.
 
-**Field types are plain TypeScript:** Fields use `number`,
-`ReadonlyArray<string | number>`, and `ReadonlyArray<string>` directly.
-There are no Schema types (no `Schema.Int`, no `Schema.Array`, etc.).
-Validation of non-negative integers and safe integer bounds is handled by
-the parser at parse time, not by schema validation at construction time.
+**Instance methods:** SemVer provides instance methods for comparison
+(`compare`, `gt`, `gte`, `lt`, `lte`, `eq`, `neq`), predicates
+(`isPrerelease`, `isStable`), and bumping via the `bump` getter which returns
+a `SemVerBump` helper with `major()`, `minor()`, `patch()`, `prerelease(id?)`,
+and `release()` methods.
+
+**Static methods:** SemVer provides static methods for parsing (`parse`),
+comparison (`compare`, `gt`, etc.), collections (`sort`, `rsort`, `max`, `min`),
+and diffing (`diff`). These are declared as static properties on the class
+and wired to standalone function implementations in `index.ts` at module load.
+
+**Field types are Schema types:** Fields use `Schema.Number`,
+`Schema.Array(Schema.Union(Schema.String, Schema.Number))`, and
+`Schema.Array(Schema.String)`. This provides built-in Schema encode/decode
+support. Validation of non-negative integers and safe integer bounds is
+still handled by the parser at parse time; the Schema types provide
+structural type information.
 
 #### Fields
 
@@ -248,11 +272,11 @@ per SemVer 2.0.0 spec clause 11.
 }
 ```
 
-**Why the override is mandatory:** The default `Data.TaggedClass` equality
-performs shallow reference comparison on arrays, which means two SemVer
-instances with identical prerelease elements but different array references
-would not be equal. Additionally, the default hash includes all fields, so
-build metadata would affect hash values.
+**Why the override is mandatory:** The default equality performs shallow
+reference comparison on arrays, which means two SemVer instances with
+identical prerelease elements but different array references would not be
+equal. Additionally, the default hash includes all fields, so build
+metadata would affect hash values.
 
 #### Trait: Hash
 
@@ -310,12 +334,12 @@ SemVer implements three Inspectable methods:
 
 #### Construction
 
-Data.TaggedClass constructors take a single object argument with the field
-values. There is no `{ disableValidation: true }` second argument (that was
-a Schema.TaggedClass feature removed in the migration). Since field types
-are plain TypeScript, no runtime schema validation occurs at construction
-time. The parser validates input before constructing instances; bump
-operations produce values that are correct by construction.
+Schema.TaggedClass constructors take a single object argument with the field
+values. Internal code (parser, bump operations) may pass
+`{ disableValidation: true }` as a second argument to bypass runtime schema
+validation for trusted inputs that are correct by construction. The parser
+validates input before constructing instances; bump operations produce values
+that are correct by construction.
 
 ---
 
@@ -325,19 +349,29 @@ operations produce values that are correct by construction.
 **Tag:** `"Comparator"`
 
 ```typescript
-/** @internal */
-export const ComparatorBase = Data.TaggedClass("Comparator");
+export class Comparator extends Schema.TaggedClass<Comparator>()("Comparator", {
+  operator: Schema.Literal("=", ">", ">=", "<", "<="),
+  version: SemVer,
+}) {
+  // Static method (wired in index.ts)
+  static parse: (input: string) => Effect<Comparator, InvalidComparatorError>;
 
-class Comparator extends ComparatorBase<{
-  readonly operator: "=" | ">" | ">=" | "<" | "<=";
-  readonly version: SemVer;
-}> {
+  // Instance method
+  test(version: SemVer): boolean { /* ... */ }
+
   toString(): string {
     const op = this.operator === "=" ? "" : this.operator;
     return `${op}${this.version.toString()}`;
   }
 }
 ```
+
+**Instance method `test`:** Tests whether a given version satisfies this
+comparator by comparing it against the comparator's version using the
+comparator's operator.
+
+**Static method `parse`:** Parses a comparator string (e.g., `">=1.2.3"`).
+Wired to `parseSingleComparator` in `index.ts`.
 
 #### Fields
 
@@ -381,17 +415,31 @@ the set. An empty ComparatorSet `[]` matches all versions (vacuous truth).
 **Tag:** `"Range"`
 
 ```typescript
-/** @internal */
-export const RangeBase = Data.TaggedClass("Range");
+export class Range extends Schema.TaggedClass<Range>()("Range", {
+  sets: Schema.Array(Schema.Array(Comparator)),
+}) {
+  // Static methods (wired in index.ts)
+  static parse: (input: string) => Effect<Range, InvalidRangeError>;
+  static satisfies: { (range: Range): (version: SemVer) => boolean; (version: SemVer, range: Range): boolean; };
+  static filter: { ... }; static maxSatisfying: { ... }; static minSatisfying: { ... };
 
-class Range extends RangeBase<{
-  readonly sets: ReadonlyArray<ReadonlyArray<Comparator>>;
-}> {
+  // Instance methods
+  test(version: SemVer): boolean { /* ... */ }
+  filter(versions: ReadonlyArray<SemVer>): ReadonlyArray<SemVer> { /* ... */ }
+
   toString(): string {
     return this.sets.map((set) => set.map((c) => c.toString()).join(" ")).join(" || ");
   }
 }
 ```
+
+**Instance methods:** `test(version)` checks whether a version satisfies the
+range. `filter(versions)` returns only the versions that satisfy the range.
+Both use inlined matching logic to avoid circular imports with `utils/matching`.
+
+**Static methods:** `parse` parses a range expression string. `satisfies`,
+`filter`, `maxSatisfying`, and `minSatisfying` are dual-API collection
+operations wired from `index.ts`.
 
 #### Semantics
 
@@ -411,17 +459,14 @@ sets are joined with ` || `.
 **Tag:** `"VersionDiff"`
 
 ```typescript
-/** @internal */
-export const VersionDiffBase = Data.TaggedClass("VersionDiff");
-
-class VersionDiff extends VersionDiffBase<{
-  readonly type: "major" | "minor" | "patch" | "prerelease" | "build" | "none";
-  readonly from: SemVer;
-  readonly to: SemVer;
-  readonly major: number;
-  readonly minor: number;
-  readonly patch: number;
-}> {
+export class VersionDiff extends Schema.TaggedClass<VersionDiff>()("VersionDiff", {
+  type: Schema.Literal("major", "minor", "patch", "prerelease", "build", "none"),
+  from: SemVer,
+  to: SemVer,
+  major: Schema.Number,
+  minor: Schema.Number,
+  patch: Schema.Number,
+}) {
   toString(): string {
     return `${this.type} (${this.from.toString()} → ${this.to.toString()})`;
   }
@@ -476,13 +521,7 @@ SemVer  <----  Comparator  <----  ComparatorSet  <----  Range
 3. `src/schemas/Comparator.ts` -- imports SemVer
 4. `src/schemas/Range.ts` -- imports Comparator (and ComparatorSet alias)
 5. `src/schemas/VersionDiff.ts` -- imports SemVer
-6. `src/SemVer.ts` -- aggregates from schemas/SemVer, utils/compare, utils/bump,
-   utils/diff, utils/order, utils/grammar
-7. `src/Range.ts` -- aggregates from schemas/Range, utils/matching, utils/algebra,
-   utils/parseRange
-8. `src/Comparator.ts` -- aggregates from schemas/Comparator, utils/grammar
-9. `src/VersionDiff.ts` -- aggregates from schemas/VersionDiff
-10. `src/index.ts` -- re-exports namespace modules via `export * as`
+6. `src/index.ts` -- flat named exports from all subdirectories
 
 ### Type Discrimination
 
@@ -568,5 +607,9 @@ All data types serialize to JSON via their `toJSON()` methods.
 
 ---
 
-**Document Status:** Current -- reflects the complete implemented data model.
-All schemas, traits, and serialization are implemented and tested.
+**Document Status:** Current -- reflects the complete implemented data model
+using Schema.TaggedClass (single class declaration, no Base exports).
+Schema classes provide instance methods (comparison, bumping, testing) and
+static methods (parsing, collection operations) as the primary API.
+All schemas, traits, instance/static methods, and serialization are
+implemented and tested.

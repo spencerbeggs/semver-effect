@@ -20,15 +20,17 @@ const classifyDiff = (a: SemVer, b: SemVer): "major" | "minor" | "patch" | "prer
  * Returns a {@link VersionDiff} containing the type of change (major, minor,
  * patch, prerelease, build, or none) and signed numeric deltas for each field.
  *
+ * Also available as `SemVer.diff(a, b)`.
+ *
  * @example
  * ```typescript
  * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* SemVer.fromString("1.2.3");
- *   const b = yield* SemVer.fromString("1.3.0");
- *   const d = SemVer.diff(a, b);
+ *   const a = yield* SemVer.parse("1.2.3");
+ *   const b = yield* SemVer.parse("1.3.0");
+ *   const d = SemVer.diff(a, b);   // static method
  *   console.log(d.type);  // "minor"
  *   console.log(d.minor); // 1
  * });

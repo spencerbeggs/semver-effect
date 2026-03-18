@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -50,12 +50,12 @@ operations such as range resolution, version grouping, and ordered navigation.
 **Key characteristics:**
 
 - Backed by a single `Ref<SortedSet<SemVer>>` for O(log n) operations
-- Exposed as an Effect service via GenericTag + Layer pattern
+- Exposed as an Effect service via class-based Context.Tag + Layer pattern
 - Every method returns an `Effect` with a typed error channel
 - Read-heavy API: most operations query the set without modifying it
 - Mutation methods are infallible; query/resolution methods surface typed errors
 
-**Service interface + tag:** `src/services/VersionCache.ts`
+**Service class (Context.Tag):** `src/services/VersionCache.ts`
 **Layer implementation:** `src/layers/VersionCacheLive.ts`
 
 ---
@@ -268,12 +268,14 @@ and provide their own Layer.
 ### Interface
 
 ```typescript
-interface VersionFetcher {
-  readonly fetch: (
-    packageName: string
-  ) => Effect<ReadonlyArray<SemVer>, VersionFetchError>
-}
-export const VersionFetcher = Context.GenericTag<VersionFetcher>("VersionFetcher")
+export class VersionFetcher extends Context.Tag("semver-effect/VersionFetcher")<
+  VersionFetcher,
+  {
+    readonly fetch: (
+      packageName: string
+    ) => Effect<ReadonlyArray<SemVer>, VersionFetchError>
+  }
+>() {}
 ```
 
 **File:** `src/services/VersionFetcher.ts`
@@ -327,7 +329,7 @@ export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> =
   Layer.effect(VersionCache, Effect.gen(function* () {
     const parser = yield* SemVerParser;  // Captured at construction
     const ref = yield* Ref.make(SortedSet.empty<SemVer>(SemVerOrder));
-    return VersionCache.of({ /* methods close over ref and parser */ });
+    return { /* methods close over ref and parser */ };
   }));
 ```
 

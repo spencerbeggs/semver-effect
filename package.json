@@ -32,6 +32,7 @@
 		"email": "spencer@beggs.codes",
 		"url": "https://spencerbeg.gs"
 	},
+	"sideEffects": false,
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts"
@@ -59,7 +60,6 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"devDependencies": {
-		"@effect/language-service": "^0.80.0",
 		"@savvy-web/changesets": "^0.5.3",
 		"@savvy-web/commitlint": "^0.4.2",
 		"@savvy-web/lint-staged": "^0.6.1",

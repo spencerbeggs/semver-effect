@@ -21,15 +21,15 @@ bun add semver-effect effect
 
 ### Parsing a Version
 
-All parsing functions return an `Effect` that either succeeds with the parsed
-value or fails with a typed error. Use `Effect.gen` to work with them:
+Use `SemVer.parse` to parse a version string. It returns an `Effect` that
+either succeeds with a `SemVer` instance or fails with a typed error:
 
 ```typescript
 import { Effect } from "effect";
 import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const version = yield* SemVer.fromString("2.1.0-beta.3+build.42");
+  const version = yield* SemVer.parse("2.1.0-beta.3+build.42");
 
   console.log(version.major);      // 2
   console.log(version.minor);      // 1
@@ -48,7 +48,7 @@ Invalid input produces a typed `InvalidVersionError` with position information:
 import { Effect } from "effect";
 import { SemVer } from "semver-effect";
 
-const program = SemVer.fromString("v1.0.0"); // "v" prefix is not valid SemVer
+const program = SemVer.parse("v1.0.0"); // "v" prefix is not valid SemVer
 
 Effect.runSync(
   program.pipe(
@@ -60,31 +60,59 @@ Effect.runSync(
 );
 ```
 
-### Comparing Versions
-
-Comparison functions support both direct call and pipeable styles:
+The standalone function `parseValidSemVer` is also available:
 
 ```typescript
-import { Effect, pipe } from "effect";
+import { parseValidSemVer } from "semver-effect";
+
+const v = yield* parseValidSemVer("2.1.0");
+```
+
+### Comparing Versions
+
+SemVer instances have instance methods for comparison. Standalone functions
+with dual (direct and pipeable) calling styles are also available:
+
+```typescript
+import { Effect } from "effect";
 import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* SemVer.fromString("1.0.0");
-  const b = yield* SemVer.fromString("2.3.1");
-  const c = yield* SemVer.fromString("1.5.0");
+  const a = yield* SemVer.parse("1.0.0");
+  const b = yield* SemVer.parse("2.3.1");
+  const c = yield* SemVer.parse("1.5.0");
 
-  // Direct call style
-  console.log(SemVer.compare(a, b));  // -1
-  console.log(SemVer.gt(b, a));       // true
-  console.log(SemVer.lt(a, c));       // true
+  // Instance methods
+  console.log(a.compare(b));  // -1
+  console.log(b.gt(a));       // true
+  console.log(a.lt(c));       // true
+  console.log(a.isStable);    // true
 
-  // Pipeable style
-  const isGreater = pipe(b, SemVer.gt(a));
-  console.log(isGreater); // true
-
-  // Sort an array of versions
+  // Static methods for collections
   const sorted = SemVer.sort([b, a, c]);
   console.log(sorted.map(String)); // ["1.0.0", "1.5.0", "2.3.1"]
+});
+
+Effect.runSync(program);
+```
+
+Standalone functions for pipe composition:
+
+```typescript
+import { Effect, pipe } from "effect";
+import { parseValidSemVer, compare, gt, lt, sort } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const a = yield* parseValidSemVer("1.0.0");
+  const b = yield* parseValidSemVer("2.3.1");
+
+  // Direct call style
+  console.log(compare(a, b));  // -1
+  console.log(gt(b, a));       // true
+
+  // Pipeable style
+  const isGreater = pipe(b, gt(a));
+  console.log(isGreater); // true
 });
 
 Effect.runSync(program);
@@ -99,20 +127,37 @@ import { Effect } from "effect";
 import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const range = yield* Range.fromString(">=1.2.0 <2.0.0");
+  const range = yield* Range.parse(">=1.2.0 <2.0.0");
 
-  const v1 = yield* SemVer.fromString("1.5.3");
-  const v2 = yield* SemVer.fromString("2.0.0");
-  const v3 = yield* SemVer.fromString("1.2.0");
+  const v1 = yield* SemVer.parse("1.5.3");
+  const v2 = yield* SemVer.parse("2.0.0");
+  const v3 = yield* SemVer.parse("1.2.0");
 
-  console.log(Range.satisfies(v1, range)); // true
-  console.log(Range.satisfies(v2, range)); // false
-  console.log(Range.satisfies(v3, range)); // true
+  // Instance methods
+  console.log(range.test(v1)); // true
+  console.log(range.test(v2)); // false
+  console.log(range.test(v3)); // true
 
   // Filter a list of versions against a range
   const versions = [v1, v2, v3];
-  const matching = Range.filter(versions, range);
+  const matching = range.filter(versions);
   console.log(matching.map(String)); // ["1.5.3", "1.2.0"]
+});
+
+Effect.runSync(program);
+```
+
+Standalone functions for pipe composition:
+
+```typescript
+import { Effect } from "effect";
+import { parseValidSemVer, parseRange, satisfies, filter } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const range = yield* parseRange(">=1.2.0 <2.0.0");
+  const v1 = yield* parseValidSemVer("1.5.3");
+
+  console.log(satisfies(v1, range)); // true
 });
 
 Effect.runSync(program);

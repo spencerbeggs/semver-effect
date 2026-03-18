@@ -1,22 +1,8 @@
-import { Data } from "effect";
-import type { SemVer } from "./SemVer.js";
-
-/** @internal */
-export const ComparatorBase = Data.TaggedClass("Comparator");
+import { Schema } from "effect";
+import { SemVer } from "./SemVer.js";
 
 /**
  * A single version constraint consisting of a comparison operator and a version.
- *
- * A comparator matches versions according to its operator:
- * - `"="` — exact match (displayed as bare version in {@link Comparator.toString})
- * - `">"` — strictly greater than
- * - `">="` — greater than or equal
- * - `"<"` — strictly less than
- * - `"<="` — less than or equal
- *
- * Comparators are the building blocks of {@link Range} objects: a comparator set
- * is an array of comparators combined with AND semantics, and a range is a union
- * (OR) of comparator sets.
  *
  * @example
  * ```typescript
@@ -24,20 +10,48 @@ export const ComparatorBase = Data.TaggedClass("Comparator");
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const comp = yield* Comparator.fromString(">=1.2.3");
- *   console.log(comp.operator); // ">="
- *   console.log(comp.version.toString()); // "1.2.3"
- *   console.log(comp.toString()); // ">=1.2.3"
+ *   const comp = yield* Comparator.parse(">=1.2.3");
+ *   console.log(comp.operator);               // ">="
+ *   console.log(comp.version.toString());      // "1.2.3"
+ *   console.log(comp.test(new SemVer({ major: 2, minor: 0, patch: 0, prerelease: [], build: [] }))); // true
  * });
  * ```
  *
  * @see {@link Range}
  * @see {@link SemVer}
  */
-export class Comparator extends ComparatorBase<{
-	readonly operator: "=" | ">" | ">=" | "<" | "<=";
-	readonly version: SemVer;
-}> {
+export class Comparator extends Schema.TaggedClass<Comparator>()("Comparator", {
+	operator: Schema.Literal("=", ">", ">=", "<", "<="),
+	version: SemVer,
+}) {
+	// ── Cross-cutting statics (wired in index.ts) ───────────────────────
+
+	/** Parse a comparator string (e.g. `">=1.2.3"`). Wired at module load by index.ts. */
+	static parse: (
+		input: string,
+	) => import("effect/Effect").Effect<Comparator, import("../errors/InvalidComparatorError.js").InvalidComparatorError>;
+
+	// ── Instance methods ────────────────────────────────────────────────
+
+	/** Test whether a version satisfies this comparator. */
+	test(version: SemVer): boolean {
+		const cmp = version.compare(this.version);
+		switch (this.operator) {
+			case "=":
+				return cmp === 0;
+			case ">":
+				return cmp > 0;
+			case ">=":
+				return cmp >= 0;
+			case "<":
+				return cmp < 0;
+			case "<=":
+				return cmp <= 0;
+		}
+	}
+
+	// ── Display ─────────────────────────────────────────────────────────
+
 	toString(): string {
 		const op = this.operator === "=" ? "" : this.operator;
 		return `${op}${this.version.toString()}`;

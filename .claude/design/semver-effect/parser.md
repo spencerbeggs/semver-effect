@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -67,7 +67,7 @@ rules, and error handling are working.
 ```text
 src/
   services/
-    SemVerParser.ts             -- Service interface + Context.GenericTag
+    SemVerParser.ts             -- Service class (class-based Context.Tag)
   layers/
     SemVerParserLive.ts         -- Layer implementation (Layer.succeed)
   utils/
@@ -240,11 +240,11 @@ space-separated simples.
 
 ### Direct Construction
 
-All SemVer/Comparator/Range instances are constructed directly by the parser
-with plain field values. Since these types use Data.TaggedClass (not
-Schema.TaggedClass), there is no runtime schema validation at construction
-time. The parser's grammar rules ensure all values are valid before
-construction.
+All SemVer/Comparator/Range instances are constructed by the parser with
+Schema.TaggedClass constructors. The parser may pass
+`{ disableValidation: true }` as a second argument to bypass runtime schema
+validation for trusted values that have already been validated by the
+grammar rules.
 
 ---
 
@@ -312,12 +312,14 @@ A bare version with no operator: `1.2.3` -> `=1.2.3`.
 
 ```typescript
 // src/services/SemVerParser.ts
-export interface SemVerParser {
-  readonly parseVersion: (input: string) => Effect.Effect<SemVer, InvalidVersionError>;
-  readonly parseRange: (input: string) => Effect.Effect<Range, InvalidRangeError>;
-  readonly parseComparator: (input: string) => Effect.Effect<Comparator, InvalidComparatorError>;
-}
-export const SemVerParser = Context.GenericTag<SemVerParser>("SemVerParser");
+export class SemVerParser extends Context.Tag("semver-effect/SemVerParser")<
+  SemVerParser,
+  {
+    readonly parseVersion: (input: string) => Effect.Effect<SemVer, InvalidVersionError>;
+    readonly parseRange: (input: string) => Effect.Effect<Range, InvalidRangeError>;
+    readonly parseComparator: (input: string) => Effect.Effect<Comparator, InvalidComparatorError>;
+  }
+>() {}
 ```
 
 ### Layer Implementation
@@ -343,14 +345,14 @@ duplicates) after the grammar parse.
 Standalone functions exported directly from `src/index.ts`:
 
 ```text
-parseVersion(input: string): Effect<SemVer, InvalidVersionError>
+parseValidSemVer(input: string): Effect<SemVer, InvalidVersionError>
 parseRange(input: string): Effect<Range, InvalidRangeError>
-parseComparator(input: string): Effect<Comparator, InvalidComparatorError>
+parseSingleComparator(input: string): Effect<Comparator, InvalidComparatorError>
 ```
 
-These do not require Layer composition. `parseVersion` and `parseComparator`
-come from `grammar.ts`; `parseRange` comes from `parseRange.ts` (applies
-normalization).
+These do not require Layer composition. `parseValidSemVer` and
+`parseSingleComparator` come from `grammar.ts`; `parseRange` comes from
+`parseRange.ts` (applies normalization).
 
 ---
 

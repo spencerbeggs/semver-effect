@@ -1,15 +1,15 @@
 import { Cause, Chunk, Effect, Exit } from "effect";
 import { describe, expect, it } from "vitest";
-import * as Comparator from "../src/Comparator.js";
 import { InvalidComparatorError } from "../src/errors/InvalidComparatorError.js";
 import { InvalidRangeError } from "../src/errors/InvalidRangeError.js";
-import * as Range from "../src/Range.js";
+import { parseSingleComparator } from "../src/utils/grammar.js";
+import { parseRange } from "../src/utils/parseRange.js";
 
-const parseRange = (input: string) => Effect.runSync(Range.fromString(input));
-const parseComp = (input: string) => Effect.runSync(Comparator.fromString(input));
+const parseRangeStr = (input: string) => Effect.runSync(parseRange(input));
+const parseComp = (input: string) => Effect.runSync(parseSingleComparator(input));
 
 const getRangeError = (input: string): InvalidRangeError => {
-	const exit = Effect.runSyncExit(Range.fromString(input));
+	const exit = Effect.runSyncExit(parseRange(input));
 	if (Exit.isFailure(exit)) {
 		const failures = Cause.failures(exit.cause);
 		const first = Chunk.get(failures, 0);
@@ -21,7 +21,7 @@ const getRangeError = (input: string): InvalidRangeError => {
 };
 
 const getCompError = (input: string): InvalidComparatorError => {
-	const exit = Effect.runSyncExit(Comparator.fromString(input));
+	const exit = Effect.runSyncExit(parseSingleComparator(input));
 	if (Exit.isFailure(exit)) {
 		const failures = Cause.failures(exit.cause);
 		const first = Chunk.get(failures, 0);
@@ -76,140 +76,140 @@ describe("parseSingleComparator", () => {
 describe("parseRangeSet", () => {
 	describe("primitives", () => {
 		it('parses ">=1.0.0" as single comparator', () => {
-			const r = parseRange(">=1.0.0");
+			const r = parseRangeStr(">=1.0.0");
 			expect(r.toString()).toBe(">=1.0.0");
 		});
 
 		it('parses ">=1.0.0 <2.0.0" as two comparators (AND)', () => {
-			const r = parseRange(">=1.0.0 <2.0.0");
+			const r = parseRangeStr(">=1.0.0 <2.0.0");
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0");
 		});
 
 		it('parses ">=1.0.0 || >=3.0.0" as two sets (OR)', () => {
-			const r = parseRange(">=1.0.0 || >=3.0.0");
+			const r = parseRangeStr(">=1.0.0 || >=3.0.0");
 			expect(r.toString()).toBe(">=1.0.0 || >=3.0.0");
 		});
 
 		it('parses ">=1.0.0 <2.0.0 || >=3.0.0 <4.0.0" as complex OR+AND', () => {
-			const r = parseRange(">=1.0.0 <2.0.0 || >=3.0.0 <4.0.0");
+			const r = parseRangeStr(">=1.0.0 <2.0.0 || >=3.0.0 <4.0.0");
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0 || >=3.0.0 <4.0.0");
 		});
 	});
 
 	describe("tilde ranges", () => {
 		it('parses "~1.2.3" -> ">=1.2.3 <1.3.0-0"', () => {
-			const r = parseRange("~1.2.3");
+			const r = parseRangeStr("~1.2.3");
 			expect(r.toString()).toBe(">=1.2.3 <1.3.0-0");
 		});
 
 		it('parses "~1.2" -> ">=1.2.0 <1.3.0-0"', () => {
-			const r = parseRange("~1.2");
+			const r = parseRangeStr("~1.2");
 			expect(r.toString()).toBe(">=1.2.0 <1.3.0-0");
 		});
 
 		it('parses "~1" -> ">=1.0.0 <2.0.0-0"', () => {
-			const r = parseRange("~1");
+			const r = parseRangeStr("~1");
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0-0");
 		});
 
 		it('parses "~0.2.3" -> ">=0.2.3 <0.3.0-0"', () => {
-			const r = parseRange("~0.2.3");
+			const r = parseRangeStr("~0.2.3");
 			expect(r.toString()).toBe(">=0.2.3 <0.3.0-0");
 		});
 	});
 
 	describe("caret ranges", () => {
 		it('parses "^1.2.3" -> ">=1.2.3 <2.0.0-0"', () => {
-			const r = parseRange("^1.2.3");
+			const r = parseRangeStr("^1.2.3");
 			expect(r.toString()).toBe(">=1.2.3 <2.0.0-0");
 		});
 
 		it('parses "^0.2.3" -> ">=0.2.3 <0.3.0-0"', () => {
-			const r = parseRange("^0.2.3");
+			const r = parseRangeStr("^0.2.3");
 			expect(r.toString()).toBe(">=0.2.3 <0.3.0-0");
 		});
 
 		it('parses "^0.0.3" -> ">=0.0.3 <0.0.4-0"', () => {
-			const r = parseRange("^0.0.3");
+			const r = parseRangeStr("^0.0.3");
 			expect(r.toString()).toBe(">=0.0.3 <0.0.4-0");
 		});
 
 		it('parses "^1.2.x" -> ">=1.2.0 <2.0.0-0"', () => {
-			const r = parseRange("^1.2.x");
+			const r = parseRangeStr("^1.2.x");
 			expect(r.toString()).toBe(">=1.2.0 <2.0.0-0");
 		});
 
 		it('parses "^0.0.x" -> ">=0.0.0 <0.1.0-0"', () => {
-			const r = parseRange("^0.0.x");
+			const r = parseRangeStr("^0.0.x");
 			expect(r.toString()).toBe(">=0.0.0 <0.1.0-0");
 		});
 
 		it('parses "^0.0" -> ">=0.0.0 <0.1.0-0"', () => {
-			const r = parseRange("^0.0");
+			const r = parseRangeStr("^0.0");
 			expect(r.toString()).toBe(">=0.0.0 <0.1.0-0");
 		});
 
 		it('parses "^1.x" -> ">=1.0.0 <2.0.0-0"', () => {
-			const r = parseRange("^1.x");
+			const r = parseRangeStr("^1.x");
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0-0");
 		});
 
 		it('parses "^0.x" -> ">=0.0.0 <1.0.0-0"', () => {
-			const r = parseRange("^0.x");
+			const r = parseRangeStr("^0.x");
 			expect(r.toString()).toBe(">=0.0.0 <1.0.0-0");
 		});
 	});
 
 	describe("x-ranges", () => {
 		it('parses "*" -> ">=0.0.0"', () => {
-			const r = parseRange("*");
+			const r = parseRangeStr("*");
 			expect(r.toString()).toBe(">=0.0.0");
 		});
 
 		it('parses "1.x" -> ">=1.0.0 <2.0.0-0"', () => {
-			const r = parseRange("1.x");
+			const r = parseRangeStr("1.x");
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0-0");
 		});
 
 		it('parses "1.2.x" -> ">=1.2.0 <1.3.0-0"', () => {
-			const r = parseRange("1.2.x");
+			const r = parseRangeStr("1.2.x");
 			expect(r.toString()).toBe(">=1.2.0 <1.3.0-0");
 		});
 
 		it('parses "" (empty) -> ">=0.0.0"', () => {
-			const r = parseRange("");
+			const r = parseRangeStr("");
 			expect(r.toString()).toBe(">=0.0.0");
 		});
 
 		it('parses "1" -> same as "1.x.x"', () => {
-			const r = parseRange("1");
+			const r = parseRangeStr("1");
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0-0");
 		});
 
 		it('parses "1.2" -> same as "1.2.x"', () => {
-			const r = parseRange("1.2");
+			const r = parseRangeStr("1.2");
 			expect(r.toString()).toBe(">=1.2.0 <1.3.0-0");
 		});
 	});
 
 	describe("hyphen ranges", () => {
 		it('parses "1.2.3 - 2.3.4" -> ">=1.2.3 <=2.3.4"', () => {
-			const r = parseRange("1.2.3 - 2.3.4");
+			const r = parseRangeStr("1.2.3 - 2.3.4");
 			expect(r.toString()).toBe(">=1.2.3 <=2.3.4");
 		});
 
 		it('parses "1.2 - 2.3.4" -> ">=1.2.0 <=2.3.4"', () => {
-			const r = parseRange("1.2 - 2.3.4");
+			const r = parseRangeStr("1.2 - 2.3.4");
 			expect(r.toString()).toBe(">=1.2.0 <=2.3.4");
 		});
 
 		it('parses "1.2.3 - 2.3" -> ">=1.2.3 <2.4.0-0"', () => {
-			const r = parseRange("1.2.3 - 2.3");
+			const r = parseRangeStr("1.2.3 - 2.3");
 			expect(r.toString()).toBe(">=1.2.3 <2.4.0-0");
 		});
 
 		it('parses "1.2.3 - 2" -> ">=1.2.3 <3.0.0-0"', () => {
-			const r = parseRange("1.2.3 - 2");
+			const r = parseRangeStr("1.2.3 - 2");
 			expect(r.toString()).toBe(">=1.2.3 <3.0.0-0");
 		});
 	});
@@ -223,17 +223,17 @@ describe("parseRangeSet", () => {
 
 	describe("whitespace", () => {
 		it('parses " >=1.0.0 " (trimmed, valid)', () => {
-			const r = parseRange(" >=1.0.0 ");
+			const r = parseRangeStr(" >=1.0.0 ");
 			expect(r.toString()).toBe(">=1.0.0");
 		});
 
 		it('parses ">=1.0.0||<2.0.0" (|| without spaces)', () => {
-			const r = parseRange(">=1.0.0||<2.0.0");
+			const r = parseRangeStr(">=1.0.0||<2.0.0");
 			expect(r.toString()).toBe(">=1.0.0 || <2.0.0");
 		});
 
 		it('parses ">=1.0.0  ||  <2.0.0" (extra spaces around ||)', () => {
-			const r = parseRange(">=1.0.0  ||  <2.0.0");
+			const r = parseRangeStr(">=1.0.0  ||  <2.0.0");
 			expect(r.toString()).toBe(">=1.0.0 || <2.0.0");
 		});
 	});

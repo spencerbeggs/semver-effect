@@ -8,15 +8,18 @@ import { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
  * Returns `-1` if `self` is lower, `0` if equal, `1` if higher. Build metadata
  * is ignored per the spec. Supports both data-last and data-first calling styles.
  *
+ * For the instance method alternative, use `v.compare(other)`.
+ *
  * @example
  * ```typescript
  * import { SemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const a = yield* SemVer.fromString("1.0.0");
- *   const b = yield* SemVer.fromString("2.0.0");
- *   console.log(SemVer.compare(a, b)); // -1
+ *   const a = yield* SemVer.parse("1.0.0");
+ *   const b = yield* SemVer.parse("2.0.0");
+ *   console.log(a.compare(b));  // -1  (instance method)
+ *   console.log(compare(a, b)); // -1  (standalone function)
  * });
  * ```
  *
@@ -34,6 +37,8 @@ export const compare: {
  * Uses Effect structural equality ({@link Equal.equals}), which compares
  * `major.minor.patch` and prerelease identifiers but ignores build metadata.
  *
+ * For the instance method alternative, use `v.eq(other)`.
+ *
  * @see {@link neq}
  * @see {@link compare}
  */
@@ -44,6 +49,8 @@ export const equal: {
 
 /**
  * Test whether `self` is strictly greater than `that`.
+ *
+ * For the instance method alternative, use `v.gt(other)`.
  *
  * @see {@link gte}
  * @see {@link compare}
@@ -56,6 +63,8 @@ export const gt: {
 /**
  * Test whether `self` is greater than or equal to `that`.
  *
+ * For the instance method alternative, use `v.gte(other)`.
+ *
  * @see {@link gt}
  * @see {@link compare}
  */
@@ -66,6 +75,8 @@ export const gte: {
 
 /**
  * Test whether `self` is strictly less than `that`.
+ *
+ * For the instance method alternative, use `v.lt(other)`.
  *
  * @see {@link lte}
  * @see {@link compare}
@@ -78,6 +89,8 @@ export const lt: {
 /**
  * Test whether `self` is less than or equal to `that`.
  *
+ * For the instance method alternative, use `v.lte(other)`.
+ *
  * @see {@link lt}
  * @see {@link compare}
  */
@@ -89,6 +102,8 @@ export const lte: {
 /**
  * Test whether two {@link SemVer} versions are not equal.
  *
+ * For the instance method alternative, use `v.neq(other)`.
+ *
  * @see {@link equal}
  */
 export const neq: {
@@ -99,12 +114,16 @@ export const neq: {
 /**
  * Test whether a version has prerelease identifiers.
  *
+ * For the instance getter alternative, use `v.isPrerelease`.
+ *
  * @see {@link isStable}
  */
 export const isPrerelease = (v: SemVer): boolean => v.prerelease.length > 0;
 
 /**
  * Test whether a version is a stable release (no prerelease identifiers).
+ *
+ * For the instance getter alternative, use `v.isStable`.
  *
  * @see {@link isPrerelease}
  */
@@ -120,13 +139,13 @@ export const isStable = (v: SemVer): boolean => v.prerelease.length === 0;
  *
  * @example
  * ```typescript
- * import { SemVer } from "semver-effect";
+ * import { parseValidSemVer, truncate } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* SemVer.fromString("1.2.3-alpha.1+build");
- *   console.log(SemVer.truncate(v, "prerelease").toString()); // "1.2.3"
- *   console.log(SemVer.truncate(v, "build").toString());      // "1.2.3-alpha.1"
+ *   const v = yield* parseValidSemVer("1.2.3-alpha.1+build");
+ *   console.log(truncate(v, "prerelease").toString()); // "1.2.3"
+ *   console.log(truncate(v, "build").toString());      // "1.2.3-alpha.1"
  * });
  * ```
  */

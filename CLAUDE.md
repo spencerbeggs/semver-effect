@@ -17,7 +17,7 @@ Load when making architectural decisions or understanding component relationship
 
 **For core data types (SemVer, Comparator, Range, VersionDiff):**
 @ `./.claude/design/semver-effect/data-model.md`
-Load when modifying schemas, changing Data.TaggedClass patterns, or debugging equality/hashing.
+Load when modifying schemas, changing Schema.TaggedClass patterns, instance/static methods, or debugging equality/hashing.
 
 **For the recursive descent parser:**
 @ `./.claude/design/semver-effect/parser.md`
@@ -126,10 +126,10 @@ Turbo tasks define dependencies: `typecheck` depends on `build` completing first
 
 ```text
 src/
-├── index.ts              (ONLY barrel export -- no other barrels)
-├── schemas/              (Data.TaggedClass types)
+├── index.ts              (ONLY barrel export -- flat named exports, no other barrels)
+├── schemas/              (Schema.TaggedClass types, single class, no Base exports)
 ├── errors/               (one TaggedError per file, split base pattern)
-├── services/             (interface + Context.GenericTag, no implementation)
+├── services/             (class-based Context.Tag, no implementation)
 ├── layers/               (Layer implementations -- the "Live" variants)
 └── utils/                (pure helpers, parser internals)
 __test__/                 (tests, adjacent to src/)
@@ -138,14 +138,26 @@ __test__/                 (tests, adjacent to src/)
 
 ### Effect Patterns
 
-- **Services**: `interface Foo` + `Context.GenericTag<Foo>("Foo")` (NOT
-  `Context.Tag` class -- avoids un-nameable `_base` in declaration files)
-- **Schemas**: Split base pattern for api-extractor compatibility:
-  `export const FooBase = Data.TaggedClass("Foo")` (`@internal`) +
-  `export class Foo extends FooBase<{...}> {}`
-- **Errors**: Same split base pattern with `Data.TaggedError`:
+- **Services**: `class Foo extends Context.Tag("semver-effect/Foo")<Foo, { ... }>() {}`
+  (class-based `Context.Tag` with fully-qualified identifier)
+- **Schemas**: Single class declaration with `Schema.TaggedClass`:
+  `export class Foo extends Schema.TaggedClass<Foo>()("Foo", { ... }) {}`
+  (no Base export, no split base pattern for schemas)
+- **Instance methods**: Schema classes (SemVer, Comparator, Range) have
+  instance methods for common operations (e.g., `v.compare()`, `v.bump.*`,
+  `v.gt()`, `range.test()`, `comp.test()`). These are the primary API.
+- **Static methods**: Schema classes also have static methods wired from
+  `index.ts` (e.g., `SemVer.parse()`, `SemVer.sort()`, `Range.parse()`,
+  `Range.satisfies()`). Static declarations live on the class; wiring
+  happens in `index.ts` at module load.
+- **Standalone functions**: The same operations are available as flat named
+  exports for pipe/data-last composition (e.g., `gt`, `satisfies`,
+  `bumpMajor`). These are alternatives to the class-based API.
+- **Errors**: Split base pattern with `Data.TaggedError`:
   `export const FooBase = Data.TaggedError("Foo")` (`@internal`) +
   `export class Foo extends FooBase<{...}> {}`
+- **Exports**: All public API is flat named exports from `src/index.ts`.
+  No `export * as` namespace pattern. No namespace aggregation modules.
 - **No barrel files** in subdirectories -- all imports go directly to source
 
 ### Imports

@@ -15,7 +15,7 @@ export const InvalidComparatorErrorBase = Data.TaggedError("InvalidComparatorErr
 /**
  * Indicates that a string could not be parsed as a valid single {@link Comparator}.
  *
- * Returned by {@link parseComparator} (and `SemVerParser.parseComparator`) when the
+ * Returned by {@link parseSingleComparator} (and `SemVerParser.parseComparator`) when the
  * input is not a valid `[operator]major.minor.patch[-prerelease][+build]` string.
  * Wildcards and range syntax are not allowed in single comparator parsing.
  *

@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -92,7 +92,7 @@ All errors extend `Data.TaggedError` for:
 1. **Typed error channel:** Participates in `Effect<A, E, R>` type tracking.
 2. **Pattern matching via `_tag`:** Enables `Effect.catchTag("InvalidVersionError", ...)`.
 3. **Structural equality:** Simplifies testing.
-4. **Consistency:** Matches the data model convention (Data.TaggedClass).
+4. **Consistency:** Matches the data model convention (Schema.TaggedClass).
 
 ### Why Structured Fields Instead of Message Strings
 
@@ -186,7 +186,7 @@ Produced by the parser when input strings fail to conform to the grammar.
 
 **Message format:** `Invalid version string: "<input>" [at position N]`
 
-**When raised:** `parseVersion()` cannot produce a valid SemVer.
+**When raised:** `parseValidSemVer()` cannot produce a valid SemVer.
 
 #### InvalidRangeError
 
@@ -210,7 +210,7 @@ Produced by the parser when input strings fail to conform to the grammar.
 
 **Message format:** `Invalid comparator: "<input>" [at position N]`
 
-**When raised:** `parseComparator()` cannot produce a valid Comparator.
+**When raised:** `parseSingleComparator()` cannot produce a valid Comparator.
 
 #### InvalidPrereleaseError
 
@@ -343,7 +343,7 @@ where a derived message is not practical.
 ### Catching a Specific Error
 
 ```ts
-const program = parseVersion("1.2.3-01").pipe(
+const program = parseValidSemVer("1.2.3-01").pipe(
   Effect.catchTag("InvalidVersionError", (err) =>
     Effect.succeed(fallbackVersion)
   )

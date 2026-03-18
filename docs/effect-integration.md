@@ -5,7 +5,7 @@ error handling, and composition patterns.
 
 ## Table of Contents
 
-- [Standalone Functions vs Services](#standalone-functions-vs-services)
+- [Class-Based API vs Standalone Functions vs Services](#class-based-api-vs-standalone-functions-vs-services)
 - [The SemVerParser Service](#the-semverparser-service)
 - [The VersionCache Service](#the-versioncache-service)
 - [The VersionFetcher Service](#the-versionfetcher-service)
@@ -15,32 +15,51 @@ error handling, and composition patterns.
 
 ---
 
-## Standalone Functions vs Services
+## Class-Based API vs Standalone Functions vs Services
 
-`semver-effect` provides two ways to use its API:
+`semver-effect` provides three ways to use its API:
 
-**Standalone functions** -- imported directly and called without providing any
-layers. These are pure functions or functions that return `Effect` values with
-no service requirements.
+**Class-based API** -- the primary interface. Static methods for parsing and
+collection operations, instance methods for comparison, bumping, and matching.
+No layers needed.
 
 ```typescript
 import { Effect } from "effect";
-import { SemVer } from "semver-effect";
+import { SemVer, Range } from "semver-effect";
 
-// No layers needed -- these work standalone
 const program = Effect.gen(function* () {
-  const v = yield* SemVer.fromString("1.2.3");
-  const bumped = SemVer.bump.major(v);
-  console.log(SemVer.compare(v, bumped)); // -1
+  const v = yield* SemVer.parse("1.2.3");
+  const range = yield* Range.parse("^1.0.0");
+
+  v.bump.major().toString();    // "2.0.0"
+  v.gt(yield* SemVer.parse("1.0.0")); // true
+  range.test(v);                // true
 });
 
 Effect.runSync(program);
 ```
 
-Standalone operations are accessed through namespace modules: `SemVer.*`
-(parsing, comparison, bumping, diffing, sorting), `Range.*` (matching,
-filtering, algebra), `Comparator.*` (parsing), and `PrettyPrint.*`
-(formatting). No layers needed.
+**Standalone functions** -- the same operations available as flat imports for
+pipe/data-last composition. No layers needed.
+
+```typescript
+import { Effect } from "effect";
+import { parseValidSemVer, bumpMajor, compare } from "semver-effect";
+
+// No layers needed -- these work standalone
+const program = Effect.gen(function* () {
+  const v = yield* parseValidSemVer("1.2.3");
+  const bumped = bumpMajor(v);
+  console.log(compare(v, bumped)); // -1
+});
+
+Effect.runSync(program);
+```
+
+Standalone operations include: `parseValidSemVer`, `parseRange`,
+`parseSingleComparator` (parsing); `compare`, `gt`, `lt`, `sort` (comparison);
+`bumpMajor`, `bumpMinor`, `bumpPatch` (bumping); `diff` (diffing); `satisfies`,
+`filter` (matching); `union`, `intersect` (algebra); `prettyPrint` (formatting).
 
 **Services** -- accessed through Effect's dependency injection. Use these when
 you need testability, multiple cache instances, or composition with other
@@ -63,7 +82,8 @@ Effect.runSync(program.pipe(Effect.provide(SemVerParserLive)));
 
 ## The SemVerParser Service
 
-`SemVerParser` provides parsing methods as an Effect service. The interface:
+`SemVerParser` provides parsing methods as an Effect service. It is defined
+as a class-based `Context.Tag`. The interface:
 
 ```typescript
 interface SemVerParser {
@@ -103,7 +123,7 @@ const TestParserLive = Layer.succeed(
   SemVerParser,
   SemVerParser.of({
     parseVersion: (_input) =>
-      Effect.succeed(SemVer.make(1, 0, 0)),
+      Effect.succeed(new SemVer({ major: 1, minor: 0, patch: 0, prerelease: [], build: [] })),
     parseRange: (_input) => Effect.fail(/* ... */),
     parseComparator: (_input) => Effect.fail(/* ... */),
   }),
@@ -133,11 +153,11 @@ const program = Effect.gen(function* () {
 
   // Load versions into the cache
   const versions = yield* Effect.all([
-    SemVer.fromString("1.0.0"),
-    SemVer.fromString("1.1.0"),
-    SemVer.fromString("1.2.0"),
-    SemVer.fromString("2.0.0"),
-    SemVer.fromString("2.1.0"),
+    SemVer.parse("1.0.0"),
+    SemVer.parse("1.1.0"),
+    SemVer.parse("1.2.0"),
+    SemVer.parse("2.0.0"),
+    SemVer.parse("2.1.0"),
   ]);
   yield* cache.load(versions);
 
@@ -181,13 +201,13 @@ const program = Effect.gen(function* () {
   const cache = yield* VersionCache;
 
   yield* cache.load([
-    yield* SemVer.fromString("1.0.0"),
-    yield* SemVer.fromString("1.5.0"),
-    yield* SemVer.fromString("2.0.0"),
+    yield* SemVer.parse("1.0.0"),
+    yield* SemVer.parse("1.5.0"),
+    yield* SemVer.parse("2.0.0"),
   ]);
 
   // Resolve with a parsed Range
-  const range = yield* Range.fromString("^1.0.0");
+  const range = yield* Range.parse("^1.0.0");
   const resolved = yield* cache.resolve(range);
   console.log(resolved.toString()); // "1.5.0"
 
@@ -203,9 +223,9 @@ const program = Effect.gen(function* () {
 const program = Effect.gen(function* () {
   const cache = yield* VersionCache;
 
-  yield* cache.load([yield* SemVer.fromString("1.0.0")]);
-  yield* cache.add(yield* SemVer.fromString("1.1.0"));
-  yield* cache.remove(yield* SemVer.fromString("1.0.0"));
+  yield* cache.load([yield* SemVer.parse("1.0.0")]);
+  yield* cache.add(yield* SemVer.parse("1.1.0"));
+  yield* cache.remove(yield* SemVer.parse("1.0.0"));
 
   const all = yield* cache.versions;
   console.log(all.map(String)); // ["1.1.0"]
@@ -243,7 +263,7 @@ const program = Effect.gen(function* () {
   const cache = yield* VersionCache;
   // ... load versions [1.0.0, 1.1.0, 1.2.0, 2.0.0] ...
 
-  const v = yield* SemVer.fromString("1.1.0");
+  const v = yield* SemVer.parse("1.1.0");
 
   const next = yield* cache.next(v);
   console.log(Option.getOrNull(next)?.toString()); // "1.2.0"
@@ -253,8 +273,8 @@ const program = Effect.gen(function* () {
 
   // Diff between two cached versions
   const d = yield* cache.diff(
-    yield* SemVer.fromString("1.0.0"),
-    yield* SemVer.fromString("2.0.0"),
+    yield* SemVer.parse("1.0.0"),
+    yield* SemVer.parse("2.0.0"),
   );
   console.log(d.type); // "major"
 });
@@ -322,7 +342,7 @@ All errors are tagged, so you can catch them individually:
 import { Effect } from "effect";
 import { SemVer } from "semver-effect";
 
-const program = SemVer.fromString(userInput).pipe(
+const program = SemVer.parse(userInput).pipe(
   Effect.catchTag("InvalidVersionError", (err) =>
     Effect.succeed(fallbackVersion),
   ),
@@ -336,9 +356,9 @@ import { Effect } from "effect";
 import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* SemVer.fromString(versionInput);
-  const r = yield* Range.fromString(rangeInput);
-  return Range.satisfies(v, r);
+  const v = yield* SemVer.parse(versionInput);
+  const r = yield* Range.parse(rangeInput);
+  return r.test(v);
 }).pipe(
   Effect.catchTags({
     InvalidVersionError: (err) =>
@@ -356,7 +376,7 @@ import { Effect } from "effect";
 import { SemVer } from "semver-effect";
 
 const parseOrDefault = (input: string) =>
-  SemVer.fromString(input).pipe(
+  SemVer.parse(input).pipe(
     Effect.orElseSucceed(() => defaultVersion),
   );
 ```
@@ -401,7 +421,7 @@ const resolvePackageVersion = (
 SemVerParserLive          (no dependencies)
        |
        v
-VersionCacheLive          (requires SemVerParser)
+ VersionCacheLive          (requires SemVerParser)
 ```
 
 ### Composing Layers

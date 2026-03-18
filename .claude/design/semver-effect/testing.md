@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: testing
 created: 2026-03-10
-updated: 2026-03-11
-last-synced: 2026-03-11
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -83,7 +83,7 @@ and coverage uses the v8 provider.
 | `coverage.test.ts` | 111 | 768 | Cross-module edge cases |
 | `errors.test.ts` | 63 | 406 | All 10 error classes |
 | `compare.test.ts` | 48 | 278 | Comparison + collection ops |
-| `schemas.test.ts` | 42 | 408 | SemVer, Comparator, Range, VersionDiff |
+| `schemas.test.ts` | 42 | 408 | Schema.TaggedClass construction + traits |
 | `parseRange.test.ts` | 36 | 239 | Range parsing + desugaring |
 | `VersionCache.test.ts` | 34 | 424 | Cache service lifecycle |
 | `parseVersion.test.ts` | 34 | 207 | Version parsing + rejection |
@@ -185,7 +185,7 @@ __test__/
   parseRange.test.ts         -- range parsing and desugaring
   parseVersion.test.ts       -- version parsing and rejection
   prettyPrint.test.ts        -- Match.exhaustive printer
-  schemas.test.ts            -- Data.TaggedClass construction + traits
+  schemas.test.ts            -- Schema.TaggedClass construction + traits
   SemVer.test.ts             -- SemVer data type (Equal, Hash, toString, toJSON)
   SemVerParser.test.ts       -- parser service via Layer composition
   spec-compliance.test.ts    -- data-driven spec compliance via fixtures
@@ -194,17 +194,15 @@ __test__/
 
 ### Import Convention
 
-Tests import from the namespace modules (`SemVer`, `Range`, `Comparator`,
-`PrettyPrint`, `VersionDiff`) rather than directly from `utils/` or
-`schemas/`. This mirrors how consumers use the public API:
+Tests import from the flat public API surface, using the same named exports
+consumers use:
 
 ```typescript
-import { SemVer, Range, PrettyPrint } from "semver-effect";
+import { SemVer, Range, gt, satisfies, parseValidSemVer, prettyPrint } from "semver-effect";
 ```
 
-For test helpers that need direct class access (e.g., constructing fixtures),
-tests may import the class directly from the namespace module since the class
-is re-exported there.
+All classes, functions, errors, services, and layers are available as direct
+named imports.
 
 ### Test File Organization
 
@@ -322,7 +320,7 @@ Covered by `schemas.test.ts` and `SemVer.test.ts`:
 - `toString()` includes all components (prerelease + build)
 - `toJSON()` produces structured representation
 - `nodejs.util.inspect.custom` is implemented
-- Direct construction with plain field values (no runtime schema validation)
+- Direct construction with Schema.TaggedClass (with or without disableValidation)
 
 ### 7. Cross-Module Edge Cases
 
@@ -386,7 +384,7 @@ Tests use two patterns depending on whether the operation requires services:
 
 ```typescript
 it("parses a valid version", () => {
-  const v = Effect.runSync(SemVer.fromString("1.2.3"))
+  const v = Effect.runSync(parseValidSemVer("1.2.3"))
   expect(v.major).toBe(1)
 })
 ```
@@ -413,7 +411,7 @@ The cleanest pattern for error assertions uses `Effect.either`:
 ```typescript
 it("rejects leading zeros", () => {
   const result = Effect.runSync(
-    SemVer.fromString("01.0.0").pipe(Effect.either)
+    parseValidSemVer("01.0.0").pipe(Effect.either)
   )
   expect(result._tag).toBe("Left")
   if (result._tag === "Left") {
@@ -442,8 +440,8 @@ it.each(invalidVersions)("rejects %s", (input) => {
 ### Direct Construction
 
 Tests that need specific SemVer instances without parsing use direct
-construction. Since Data.TaggedClass has no runtime schema validation,
-there is no second `{ disableValidation: true }` argument:
+construction. Schema.TaggedClass accepts `{ disableValidation: true }` as
+a second argument to skip runtime validation for known-good test data:
 
 ```typescript
 const v = (major: number, minor: number, patch: number,
@@ -451,14 +449,14 @@ const v = (major: number, minor: number, patch: number,
            build: ReadonlyArray<string> = []) =>
   new SemVer({ major, minor, patch,
                prerelease: [...prerelease],
-               build: [...build] })
+               build: [...build] }, { disableValidation: true })
 ```
 
 ### Testing Order and Equal Instances
 
 ```typescript
 it("orders versions by precedence", () => {
-  expect(SemVer.Order(parse("1.0.0"), parse("2.0.0"))).toBe(-1)
+  expect(SemVerOrder(parse("1.0.0"), parse("2.0.0"))).toBe(-1)
 })
 
 it("treats build metadata as equal", () => {

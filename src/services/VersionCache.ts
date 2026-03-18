@@ -25,8 +25,8 @@ import type { VersionDiff } from "../schemas/VersionDiff.js";
  *
  * const program = Effect.gen(function* () {
  *   const cache = yield* VersionCache;
- *   const v1 = yield* SemVer.fromString("1.0.0");
- *   const v2 = yield* SemVer.fromString("2.0.0");
+ *   const v1 = new SemVer({ major: 1, minor: 0, patch: 0, prerelease: [], build: [] });
+ *   const v2 = new SemVer({ major: 2, minor: 0, patch: 0, prerelease: [], build: [] });
  *   yield* cache.load([v1, v2]);
  *   const latest = yield* cache.latest();
  *   console.log(latest.toString()); // "2.0.0"
@@ -36,62 +36,58 @@ import type { VersionDiff } from "../schemas/VersionDiff.js";
  * @see {@link VersionCacheLive}
  * @see {@link https://effect.website/docs/context-management/services | Effect Services}
  */
-export interface VersionCache {
-	// Mutation (infallible)
+export class VersionCache extends Context.Tag("semver-effect/VersionCache")<
+	VersionCache,
+	{
+		// Mutation (infallible)
 
-	/** Replace all cached versions with the given array. */
-	readonly load: (versions: ReadonlyArray<SemVer>) => Effect.Effect<void, never>;
-	/** Add a single version to the cache. */
-	readonly add: (version: SemVer) => Effect.Effect<void, never>;
-	/** Remove a single version from the cache. */
-	readonly remove: (version: SemVer) => Effect.Effect<void, never>;
+		/** Replace all cached versions with the given array. */
+		readonly load: (versions: ReadonlyArray<SemVer>) => Effect.Effect<void, never>;
+		/** Add a single version to the cache. */
+		readonly add: (version: SemVer) => Effect.Effect<void, never>;
+		/** Remove a single version from the cache. */
+		readonly remove: (version: SemVer) => Effect.Effect<void, never>;
 
-	// Query
+		// Query
 
-	/** Retrieve all cached versions in sorted order. Fails with {@link EmptyCacheError} if empty. */
-	readonly versions: Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
-	/** Retrieve the highest version in the cache. Fails with {@link EmptyCacheError} if empty. */
-	readonly latest: () => Effect.Effect<SemVer, EmptyCacheError>;
-	/** Retrieve the lowest version in the cache. Fails with {@link EmptyCacheError} if empty. */
-	readonly oldest: () => Effect.Effect<SemVer, EmptyCacheError>;
+		/** Retrieve all cached versions in sorted order. Fails with {@link EmptyCacheError} if empty. */
+		readonly versions: Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
+		/** Retrieve the highest version in the cache. Fails with {@link EmptyCacheError} if empty. */
+		readonly latest: () => Effect.Effect<SemVer, EmptyCacheError>;
+		/** Retrieve the lowest version in the cache. Fails with {@link EmptyCacheError} if empty. */
+		readonly oldest: () => Effect.Effect<SemVer, EmptyCacheError>;
 
-	// Resolution
+		// Resolution
 
-	/** Find the highest version satisfying a {@link Range}. Fails with {@link UnsatisfiedRangeError} if none match. */
-	readonly resolve: (range: Range) => Effect.Effect<SemVer, UnsatisfiedRangeError>;
-	/** Parse a range string and resolve it. Fails with {@link InvalidRangeError} or {@link UnsatisfiedRangeError}. */
-	readonly resolveString: (input: string) => Effect.Effect<SemVer, InvalidRangeError | UnsatisfiedRangeError>;
-	/**
-	 * Return all cached versions satisfying a {@link Range}.
-	 * Fails with {@link EmptyCacheError} if the cache is empty (nothing loaded).
-	 * Returns an empty array if the cache is non-empty but no versions match.
-	 */
-	readonly filter: (range: Range) => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
+		/** Find the highest version satisfying a {@link Range}. Fails with {@link UnsatisfiedRangeError} if none match. */
+		readonly resolve: (range: Range) => Effect.Effect<SemVer, UnsatisfiedRangeError>;
+		/** Parse a range string and resolve it. Fails with {@link InvalidRangeError} or {@link UnsatisfiedRangeError}. */
+		readonly resolveString: (input: string) => Effect.Effect<SemVer, InvalidRangeError | UnsatisfiedRangeError>;
+		/**
+		 * Return all cached versions satisfying a {@link Range}.
+		 * Fails with {@link EmptyCacheError} if the cache is empty (nothing loaded).
+		 * Returns an empty array if the cache is non-empty but no versions match.
+		 */
+		readonly filter: (range: Range) => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
 
-	// Grouping
+		// Grouping
 
-	/** Group cached versions by major, minor, or patch level. Fails with {@link EmptyCacheError} if empty. */
-	readonly groupBy: (
-		strategy: "major" | "minor" | "patch",
-	) => Effect.Effect<Map<string, ReadonlyArray<SemVer>>, EmptyCacheError>;
-	/** Return the latest version for each distinct major version. Fails with {@link EmptyCacheError} if empty. */
-	readonly latestByMajor: () => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
-	/** Return the latest version for each distinct major.minor pair. Fails with {@link EmptyCacheError} if empty. */
-	readonly latestByMinor: () => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
+		/** Group cached versions by major, minor, or patch level. Fails with {@link EmptyCacheError} if empty. */
+		readonly groupBy: (
+			strategy: "major" | "minor" | "patch",
+		) => Effect.Effect<Map<string, ReadonlyArray<SemVer>>, EmptyCacheError>;
+		/** Return the latest version for each distinct major version. Fails with {@link EmptyCacheError} if empty. */
+		readonly latestByMajor: () => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
+		/** Return the latest version for each distinct major.minor pair. Fails with {@link EmptyCacheError} if empty. */
+		readonly latestByMinor: () => Effect.Effect<ReadonlyArray<SemVer>, EmptyCacheError>;
 
-	// Navigation
+		// Navigation
 
-	/** Compute a {@link VersionDiff} between two versions. Fails with {@link VersionNotFoundError} if either is missing. */
-	readonly diff: (a: SemVer, b: SemVer) => Effect.Effect<VersionDiff, VersionNotFoundError>;
-	/** Get the next higher version after the given one. Fails with {@link VersionNotFoundError} if not in cache. */
-	readonly next: (version: SemVer) => Effect.Effect<Option.Option<SemVer>, VersionNotFoundError>;
-	/** Get the next lower version before the given one. Fails with {@link VersionNotFoundError} if not in cache. */
-	readonly prev: (version: SemVer) => Effect.Effect<Option.Option<SemVer>, VersionNotFoundError>;
-}
-
-/**
- * Effect Context tag for the {@link VersionCache} service.
- *
- * @see {@link VersionCacheLive}
- */
-export const VersionCache = Context.GenericTag<VersionCache>("VersionCache");
+		/** Compute a {@link VersionDiff} between two versions. Fails with {@link VersionNotFoundError} if either is missing. */
+		readonly diff: (a: SemVer, b: SemVer) => Effect.Effect<VersionDiff, VersionNotFoundError>;
+		/** Get the next higher version after the given one. Fails with {@link VersionNotFoundError} if not in cache. */
+		readonly next: (version: SemVer) => Effect.Effect<Option.Option<SemVer>, VersionNotFoundError>;
+		/** Get the next lower version before the given one. Fails with {@link VersionNotFoundError} if not in cache. */
+		readonly prev: (version: SemVer) => Effect.Effect<Option.Option<SemVer>, VersionNotFoundError>;
+	}
+>() {}

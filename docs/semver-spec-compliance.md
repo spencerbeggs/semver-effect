@@ -114,8 +114,9 @@ The full precedence chain from the spec:
 < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
 ```
 
-The `SemVerOrder` instance implements this as an `Order<SemVer>` compatible with
-Effect's `SortedSet`, `Array.sort`, and other ordering utilities.
+The `SemVerOrder` instance (imported directly from `semver-effect`) implements
+this as an `Order<SemVer>` compatible with Effect's `SortedSet`, `Array.sort`,
+and other ordering utilities.
 
 ---
 
@@ -168,9 +169,9 @@ import { Effect } from "effect";
 import { SemVer } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const a = yield* SemVer.fromString("1.0.0-beta.2");
-  const b = yield* SemVer.fromString("1.0.0-beta.11");
-  console.log(SemVer.compare(a, b)); // -1 (2 < 11, numeric comparison)
+  const a = yield* SemVer.parse("1.0.0-beta.2");
+  const b = yield* SemVer.parse("1.0.0-beta.11");
+  console.log(a.compare(b)); // -1 (2 < 11, numeric comparison)
 
   // With string comparison, "2" > "11" would be wrong
 });
@@ -257,16 +258,16 @@ import { Effect } from "effect";
 import { SemVer, Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const v = yield* SemVer.fromString("3.0.0-beta.1");
+  const v = yield* SemVer.parse("3.0.0-beta.1");
 
   // Satisfies: comparator >=3.0.0-alpha.0 has prerelease AND same tuple [3,0,0]
-  const r1 = yield* Range.fromString(">=3.0.0-alpha.0");
-  console.log(Range.satisfies(v, r1)); // true
+  const r1 = yield* Range.parse(">=3.0.0-alpha.0");
+  console.log(r1.test(v)); // true
 
   // Does NOT satisfy: >=2.9.0 has no prerelease on the [3,0,0] tuple
   // Even though 3.0.0-beta.1 > 2.9.0 by precedence
-  const r2 = yield* Range.fromString(">=2.9.0");
-  console.log(Range.satisfies(v, r2)); // false
+  const r2 = yield* Range.parse(">=2.9.0");
+  console.log(r2.test(v)); // false
 });
 ```
 
@@ -297,7 +298,7 @@ import { Effect } from "effect";
 import { Range } from "semver-effect";
 
 const program = Effect.gen(function* () {
-  const range = yield* Range.fromString("");
+  const range = yield* Range.parse("");
   // Equivalent to "*" -- matches everything
 });
 ```
