@@ -40,8 +40,10 @@ export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 	build: Schema.Array(Schema.String),
 }) {
 	// ── Cross-cutting statics (wired in index.ts) ───────────────────────
+	// These are assigned by index.ts at module load time to avoid circular
+	// imports. Always import from "semver-effect", not from this file directly.
 
-	/** Parse a strict SemVer 2.0.0 string. Wired at module load by index.ts. */
+	/** Parse a strict SemVer 2.0.0 string. @remarks Import from `"semver-effect"`, not the schema subpath. */
 	static parse: (input: string) => import("effect/Effect").Effect<SemVer, InvalidVersionError>;
 
 	/** Convenience positional constructor. Wired at module load by index.ts. */
@@ -158,7 +160,7 @@ export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 	}
 
 	/** Test whether `this` equals `that` (ignores build metadata). */
-	eq(that: SemVer): boolean {
+	equal(that: SemVer): boolean {
 		return this.compare(that) === 0;
 	}
 

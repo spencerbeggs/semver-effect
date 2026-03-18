@@ -2,6 +2,9 @@
 "semver-effect": minor
 ---
 
+<!-- Pre-1.0 convention: minor bump for breaking changes (produces 0.2.0). -->
+
+
 ## Breaking Changes
 
 - **Schema.TaggedClass**: SemVer, Comparator, Range, VersionDiff now use
