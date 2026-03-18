@@ -164,6 +164,11 @@ export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 		return this.compare(that) === 0;
 	}
 
+	/** Alias for {@link equal}. */
+	eq(that: SemVer): boolean {
+		return this.equal(that);
+	}
+
 	/** Test whether `this` does not equal `that` (ignores build metadata). */
 	neq(that: SemVer): boolean {
 		return this.compare(that) !== 0;
