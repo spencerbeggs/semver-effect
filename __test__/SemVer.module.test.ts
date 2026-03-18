@@ -1,15 +1,31 @@
-import { Effect, Equal, Option, Schema, pipe } from "effect";
+import type { Equivalence } from "effect";
+import { Effect, Equal, Option, ParseResult, Schema, pipe } from "effect";
 import { describe, expect, it } from "vitest";
-import * as SemVer from "../src/SemVer.js";
+import { SemVer } from "../src/schemas/SemVer.js";
+import { bumpMajor, bumpMinor, bumpPatch, bumpPrerelease, bumpRelease } from "../src/utils/bump.js";
+import { compare, gt, isPrerelease, max, sort } from "../src/utils/compare.js";
+import { diff } from "../src/utils/diff.js";
+import { parseValidSemVer } from "../src/utils/grammar.js";
+import { make } from "./utils/make.js";
 
-describe("SemVer module", () => {
+/** Equivalence that delegates to Effect Equal */
+const SemVerEquivalence: Equivalence.Equivalence<SemVer> = (a, b) => Equal.equals(a, b);
+
+/** Schema transform: string <-> SemVer */
+const FromString = Schema.transformOrFail(Schema.String, Schema.instanceOf(SemVer), {
+	strict: true,
+	decode: (s, _, ast) => Effect.mapError(parseValidSemVer(s), (e) => new ParseResult.Type(ast, s, e.message)),
+	encode: (v) => Effect.succeed(v.toString()),
+});
+
+describe("SemVer module (flat API)", () => {
 	// -----------------------------------------------------------------------
 	// make
 	// -----------------------------------------------------------------------
 
 	describe("make", () => {
 		it("creates a SemVer from major, minor, patch", () => {
-			const v = SemVer.make(1, 2, 3);
+			const v = make(1, 2, 3);
 			expect(v.major).toBe(1);
 			expect(v.minor).toBe(2);
 			expect(v.patch).toBe(3);
@@ -19,7 +35,7 @@ describe("SemVer module", () => {
 		});
 
 		it("creates a SemVer with prerelease and build", () => {
-			const v = SemVer.make(1, 0, 0, ["alpha", 1], ["build"]);
+			const v = make(1, 0, 0, ["alpha", 1], ["build"]);
 			expect(v.major).toBe(1);
 			expect(v.prerelease).toEqual(["alpha", 1]);
 			expect(v.build).toEqual(["build"]);
@@ -32,22 +48,24 @@ describe("SemVer module", () => {
 	// -----------------------------------------------------------------------
 
 	describe("ZERO", () => {
+		const ZERO = make(0, 0, 0);
+
 		it("is 0.0.0", () => {
-			expect(SemVer.ZERO.toString()).toBe("0.0.0");
+			expect(ZERO.toString()).toBe("0.0.0");
 		});
 
 		it("equals make(0, 0, 0)", () => {
-			expect(Equal.equals(SemVer.ZERO, SemVer.make(0, 0, 0))).toBe(true);
+			expect(Equal.equals(ZERO, make(0, 0, 0))).toBe(true);
 		});
 	});
 
 	// -----------------------------------------------------------------------
-	// fromString
+	// fromString (parseValidSemVer)
 	// -----------------------------------------------------------------------
 
 	describe("fromString", () => {
 		it("parses a valid semver string", () => {
-			const v = Effect.runSync(SemVer.fromString("1.2.3"));
+			const v = Effect.runSync(parseValidSemVer("1.2.3"));
 			expect(v.major).toBe(1);
 			expect(v.minor).toBe(2);
 			expect(v.patch).toBe(3);
@@ -59,53 +77,53 @@ describe("SemVer module", () => {
 	// -----------------------------------------------------------------------
 
 	describe("comparison", () => {
-		const v1 = SemVer.make(1, 0, 0);
-		const v2 = SemVer.make(2, 0, 0);
+		const v1 = make(1, 0, 0);
+		const v2 = make(2, 0, 0);
 
 		it("gt data-first", () => {
-			expect(SemVer.gt(v2, v1)).toBe(true);
-			expect(SemVer.gt(v1, v2)).toBe(false);
+			expect(gt(v2, v1)).toBe(true);
+			expect(gt(v1, v2)).toBe(false);
 		});
 
 		it("gt data-last (pipe)", () => {
-			const result = pipe(v2, SemVer.gt(v1));
+			const result = pipe(v2, gt(v1));
 			expect(result).toBe(true);
 		});
 
 		it("compare returns -1, 0, 1", () => {
-			expect(SemVer.compare(v1, v2)).toBe(-1);
-			expect(SemVer.compare(v1, v1)).toBe(0);
-			expect(SemVer.compare(v2, v1)).toBe(1);
+			expect(compare(v1, v2)).toBe(-1);
+			expect(compare(v1, v1)).toBe(0);
+			expect(compare(v2, v1)).toBe(1);
 		});
 	});
 
 	// -----------------------------------------------------------------------
-	// bump namespace
+	// bump
 	// -----------------------------------------------------------------------
 
 	describe("bump", () => {
-		const v = SemVer.make(1, 2, 3);
+		const v = make(1, 2, 3);
 
 		it("major", () => {
-			expect(SemVer.bump.major(v).toString()).toBe("2.0.0");
+			expect(bumpMajor(v).toString()).toBe("2.0.0");
 		});
 
 		it("minor", () => {
-			expect(SemVer.bump.minor(v).toString()).toBe("1.3.0");
+			expect(bumpMinor(v).toString()).toBe("1.3.0");
 		});
 
 		it("patch", () => {
-			expect(SemVer.bump.patch(v).toString()).toBe("1.2.4");
+			expect(bumpPatch(v).toString()).toBe("1.2.4");
 		});
 
 		it("prerelease", () => {
-			const pre = SemVer.bump.prerelease(v, "alpha");
+			const pre = bumpPrerelease(v, "alpha");
 			expect(pre.toString()).toBe("1.2.4-alpha.0");
 		});
 
 		it("release", () => {
-			const pre = SemVer.make(1, 2, 3, ["rc", 1]);
-			expect(SemVer.bump.release(pre).toString()).toBe("1.2.3");
+			const pre = make(1, 2, 3, ["rc", 1]);
+			expect(bumpRelease(pre).toString()).toBe("1.2.3");
 		});
 	});
 
@@ -115,16 +133,16 @@ describe("SemVer module", () => {
 
 	describe("sort", () => {
 		it("sorts versions ascending", () => {
-			const versions = [SemVer.make(3, 0, 0), SemVer.make(1, 0, 0), SemVer.make(2, 0, 0)];
-			const sorted = SemVer.sort(versions);
+			const versions = [make(3, 0, 0), make(1, 0, 0), make(2, 0, 0)];
+			const sorted = sort(versions);
 			expect(sorted.map((v) => v.toString())).toEqual(["1.0.0", "2.0.0", "3.0.0"]);
 		});
 	});
 
 	describe("max", () => {
 		it("returns the highest version", () => {
-			const versions = [SemVer.make(1, 0, 0), SemVer.make(3, 0, 0), SemVer.make(2, 0, 0)];
-			const result = SemVer.max(versions);
+			const versions = [make(1, 0, 0), make(3, 0, 0), make(2, 0, 0)];
+			const result = max(versions);
 			expect(Option.isSome(result)).toBe(true);
 			if (Option.isSome(result)) {
 				expect(result.value.toString()).toBe("3.0.0");
@@ -138,9 +156,9 @@ describe("SemVer module", () => {
 
 	describe("diff", () => {
 		it("computes version diff", () => {
-			const a = SemVer.make(1, 0, 0);
-			const b = SemVer.make(2, 1, 0);
-			const d = SemVer.diff(a, b);
+			const a = make(1, 0, 0);
+			const b = make(2, 1, 0);
+			const d = diff(a, b);
 			expect(d.type).toBe("major");
 			expect(d.major).toBe(1);
 			expect(d.minor).toBe(1);
@@ -153,11 +171,11 @@ describe("SemVer module", () => {
 
 	describe("isPrerelease", () => {
 		it("returns true for prerelease versions", () => {
-			expect(SemVer.isPrerelease(SemVer.make(1, 0, 0, ["alpha"]))).toBe(true);
+			expect(isPrerelease(make(1, 0, 0, ["alpha"]))).toBe(true);
 		});
 
 		it("returns false for stable versions", () => {
-			expect(SemVer.isPrerelease(SemVer.make(1, 0, 0))).toBe(false);
+			expect(isPrerelease(make(1, 0, 0))).toBe(false);
 		});
 	});
 
@@ -167,15 +185,15 @@ describe("SemVer module", () => {
 
 	describe("Equivalence", () => {
 		it("treats equal versions as equivalent", () => {
-			const a = SemVer.make(1, 2, 3);
-			const b = SemVer.make(1, 2, 3);
-			expect(SemVer.Equivalence(a, b)).toBe(true);
+			const a = make(1, 2, 3);
+			const b = make(1, 2, 3);
+			expect(SemVerEquivalence(a, b)).toBe(true);
 		});
 
 		it("treats different versions as not equivalent", () => {
-			const a = SemVer.make(1, 2, 3);
-			const b = SemVer.make(1, 2, 4);
-			expect(SemVer.Equivalence(a, b)).toBe(false);
+			const a = make(1, 2, 3);
+			const b = make(1, 2, 4);
+			expect(SemVerEquivalence(a, b)).toBe(false);
 		});
 	});
 
@@ -185,24 +203,24 @@ describe("SemVer module", () => {
 
 	describe("FromString", () => {
 		it("decodes a string to SemVer", () => {
-			const v = Schema.decodeUnknownSync(SemVer.FromString)("1.2.3");
-			expect(v).toBeInstanceOf(SemVer.SemVer);
+			const v = Schema.decodeUnknownSync(FromString)("1.2.3");
+			expect(v).toBeInstanceOf(SemVer);
 			expect(v.toString()).toBe("1.2.3");
 		});
 
 		it("encodes a SemVer to string", () => {
-			const v = SemVer.make(1, 2, 3);
-			const s = Schema.encodeSync(SemVer.FromString)(v);
+			const v = make(1, 2, 3);
+			const s = Schema.encodeSync(FromString)(v);
 			expect(s).toBe("1.2.3");
 		});
 
 		it("fails on invalid input", () => {
-			expect(() => Schema.decodeUnknownSync(SemVer.FromString)("not-a-version")).toThrow();
+			expect(() => Schema.decodeUnknownSync(FromString)("not-a-version")).toThrow();
 		});
 
 		it("is usable with Schema.Config", () => {
 			// Verify the schema type is compatible with Schema.Config
-			const config = Schema.Config("TEST_VERSION", SemVer.FromString);
+			const config = Schema.Config("TEST_VERSION", FromString);
 			expect(config).toBeDefined();
 		});
 	});

@@ -1,6 +1,5 @@
 import { Equal } from "effect";
 import { describe, expect, it } from "vitest";
-import * as Comparator from "../src/Comparator.js";
 import { EmptyCacheError } from "../src/errors/EmptyCacheError.js";
 import { InvalidBumpError } from "../src/errors/InvalidBumpError.js";
 import { InvalidComparatorError } from "../src/errors/InvalidComparatorError.js";
@@ -11,16 +10,19 @@ import { UnsatisfiableConstraintError } from "../src/errors/UnsatisfiableConstra
 import { UnsatisfiedRangeError } from "../src/errors/UnsatisfiedRangeError.js";
 import { VersionFetchError } from "../src/errors/VersionFetchError.js";
 import { VersionNotFoundError } from "../src/errors/VersionNotFoundError.js";
-import * as Range from "../src/Range.js";
-import * as SemVer from "../src/SemVer.js";
+import type { Comparator as ComparatorClass } from "../src/schemas/Comparator.js";
+import { Comparator } from "../src/schemas/Comparator.js";
+import type { Range as RangeClass } from "../src/schemas/Range.js";
+import { Range } from "../src/schemas/Range.js";
+import type { SemVer as SemVerClass } from "../src/schemas/SemVer.js";
+import { make } from "./utils/make.js";
 
-const v = (major: number, minor: number, patch: number) => SemVer.make(major, minor, patch);
+const v = (major: number, minor: number, patch: number) => make(major, minor, patch);
 
-const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVer.SemVer) =>
-	new Comparator.Comparator({ operator, version });
+const c = (operator: "=" | ">" | ">=" | "<" | "<=", version: SemVerClass) => new Comparator({ operator, version });
 
-const r = (sets: ReadonlyArray<ReadonlyArray<Comparator.Comparator>> = []) =>
-	new Range.Range({ sets: [...sets.map((s) => [...s])] });
+const r = (sets: ReadonlyArray<ReadonlyArray<ComparatorClass>> = []) =>
+	new Range({ sets: [...sets.map((s) => [...s])] });
 
 describe("InvalidVersionError", () => {
 	it("has the correct _tag", () => {
@@ -194,7 +196,7 @@ describe("InvalidPrereleaseError", () => {
 
 describe("UnsatisfiedRangeError", () => {
 	const range = r([[c(">=", v(2, 0, 0))]]);
-	const available: ReadonlyArray<SemVer.SemVer> = [];
+	const available: ReadonlyArray<SemVerClass> = [];
 
 	it("has the correct _tag", () => {
 		const err = new UnsatisfiedRangeError({ range, available });
@@ -207,7 +209,7 @@ describe("UnsatisfiedRangeError", () => {
 	});
 
 	it("exposes the available field", () => {
-		const versions: ReadonlyArray<SemVer.SemVer> = [v(1, 0, 0), v(1, 5, 0)];
+		const versions: ReadonlyArray<SemVerClass> = [v(1, 0, 0), v(1, 5, 0)];
 		const err = new UnsatisfiedRangeError({ range, available: versions });
 		expect(err.available).toBe(versions);
 	});
@@ -291,7 +293,7 @@ describe("EmptyCacheError", () => {
 });
 
 describe("UnsatisfiableConstraintError", () => {
-	const constraints: ReadonlyArray<Range.Range> = [];
+	const constraints: ReadonlyArray<RangeClass> = [];
 
 	it("has the correct _tag", () => {
 		const err = new UnsatisfiableConstraintError({ constraints });
@@ -299,7 +301,7 @@ describe("UnsatisfiableConstraintError", () => {
 	});
 
 	it("exposes the constraints field", () => {
-		const cs: ReadonlyArray<Range.Range> = [r([[c(">=", v(1, 0, 0))]]), r([[c("<", v(2, 0, 0))]])];
+		const cs: ReadonlyArray<RangeClass> = [r([[c(">=", v(1, 0, 0))]]), r([[c("<", v(2, 0, 0))]])];
 		const err = new UnsatisfiableConstraintError({ constraints: cs });
 		expect(err.constraints).toBe(cs);
 	});
@@ -317,7 +319,7 @@ describe("UnsatisfiableConstraintError", () => {
 	});
 
 	it("supports structural equality via Equal.equals", () => {
-		const sharedConstraints: ReadonlyArray<Range.Range> = [r([[c(">=", v(1, 0, 0))]])];
+		const sharedConstraints: ReadonlyArray<RangeClass> = [r([[c(">=", v(1, 0, 0))]])];
 		const a = new UnsatisfiableConstraintError({ constraints: sharedConstraints });
 		const b = new UnsatisfiableConstraintError({ constraints: sharedConstraints });
 		const d = new UnsatisfiableConstraintError({ constraints: [r([[c(">=", v(2, 0, 0))]])] });

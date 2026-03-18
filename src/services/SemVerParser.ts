@@ -32,18 +32,14 @@ import type { SemVer } from "../schemas/SemVer.js";
  * @see {@link SemVerParserLive}
  * @see {@link https://effect.website/docs/context-management/services | Effect Services}
  */
-export interface SemVerParser {
-	/** Parse a string into a {@link SemVer}. Fails with {@link InvalidVersionError} on invalid input. */
-	readonly parseVersion: (input: string) => Effect.Effect<SemVer, InvalidVersionError>;
-	/** Parse a range expression into a {@link Range}. Fails with {@link InvalidRangeError} on invalid input. */
-	readonly parseRange: (input: string) => Effect.Effect<Range, InvalidRangeError>;
-	/** Parse a single comparator string into a {@link Comparator}. Fails with {@link InvalidComparatorError} on invalid input. */
-	readonly parseComparator: (input: string) => Effect.Effect<Comparator, InvalidComparatorError>;
-}
-
-/**
- * Effect Context tag for the {@link SemVerParser} service.
- *
- * @see {@link SemVerParserLive}
- */
-export const SemVerParser = Context.GenericTag<SemVerParser>("SemVerParser");
+export class SemVerParser extends Context.Tag("semver-effect/SemVerParser")<
+	SemVerParser,
+	{
+		/** Parse a string into a {@link SemVer}. Fails with {@link InvalidVersionError} on invalid input. */
+		readonly parseVersion: (input: string) => Effect.Effect<SemVer, InvalidVersionError>;
+		/** Parse a range expression into a {@link Range}. Fails with {@link InvalidRangeError} on invalid input. */
+		readonly parseRange: (input: string) => Effect.Effect<Range, InvalidRangeError>;
+		/** Parse a single comparator string into a {@link Comparator}. Fails with {@link InvalidComparatorError} on invalid input. */
+		readonly parseComparator: (input: string) => Effect.Effect<Comparator, InvalidComparatorError>;
+	}
+>() {}

@@ -50,7 +50,7 @@ const requireNonEmptySet = (
  *
  * const program = Effect.gen(function* () {
  *   const cache = yield* VersionCache;
- *   const v = yield* SemVer.fromString("1.0.0");
+ *   const v = new SemVer({ major: 1, minor: 0, patch: 0, prerelease: [], build: [] });
  *   yield* cache.add(v);
  *   const latest = yield* cache.latest();
  * }).pipe(Effect.provide(AppLayer));

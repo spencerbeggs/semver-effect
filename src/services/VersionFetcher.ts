@@ -25,12 +25,10 @@ import type { SemVer } from "../schemas/SemVer.js";
  * @see {@link VersionCache}
  * @see {@link https://effect.website/docs/context-management/services | Effect Services}
  */
-export interface VersionFetcher {
-	/** Fetch all available versions for the given package name. Fails with {@link VersionFetchError} on failure. */
-	readonly fetch: (packageName: string) => Effect.Effect<ReadonlyArray<SemVer>, VersionFetchError>;
-}
-
-/**
- * Effect Context tag for the {@link VersionFetcher} service.
- */
-export const VersionFetcher = Context.GenericTag<VersionFetcher>("VersionFetcher");
+export class VersionFetcher extends Context.Tag("semver-effect/VersionFetcher")<
+	VersionFetcher,
+	{
+		/** Fetch all available versions for the given package name. Fails with {@link VersionFetchError} on failure. */
+		readonly fetch: (packageName: string) => Effect.Effect<ReadonlyArray<SemVer>, VersionFetchError>;
+	}
+>() {}

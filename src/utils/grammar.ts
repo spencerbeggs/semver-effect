@@ -198,15 +198,13 @@ const parseBuild = makeParseBuild(parseBuildIdentifier);
  * string. Returns an {@link Effect.Effect} that fails with {@link InvalidVersionError}
  * on invalid input.
  *
- * This function is re-exported from the barrel as `parseVersion`.
- *
  * @example
  * ```typescript
- * import { SemVer } from "semver-effect";
+ * import { parseValidSemVer } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const v = yield* SemVer.fromString("1.2.3-beta.1+build.42");
+ *   const v = yield* parseValidSemVer("1.2.3-beta.1+build.42");
  *   console.log(v.toString()); // "1.2.3-beta.1+build.42"
  * });
  * ```
@@ -525,15 +523,13 @@ export const parseRangeSet = (raw: string): Effect.Effect<Range, InvalidRangeErr
  *
  * If no operator is specified, `"="` (exact match) is assumed.
  *
- * This function is re-exported from the barrel as `parseComparator`.
- *
  * @example
  * ```typescript
- * import { Comparator } from "semver-effect";
+ * import { parseSingleComparator } from "semver-effect";
  * import { Effect } from "effect";
  *
  * const program = Effect.gen(function* () {
- *   const comp = yield* Comparator.fromString(">=1.0.0");
+ *   const comp = yield* parseSingleComparator(">=1.0.0");
  *   console.log(comp.operator); // ">="
  *   console.log(comp.version.toString()); // "1.0.0"
  * });

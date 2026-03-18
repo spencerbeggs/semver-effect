@@ -9,11 +9,11 @@ loose mode.
 
 ## Features
 
-- Effect-idiomatic namespaced API (`SemVer.*`, `Range.*`) matching Effect's own conventions
+- Class-based API with instance methods (`v.bump.minor()`, `range.test(v)`) and static methods (`SemVer.parse()`, `Range.parse()`)
+- Standalone functions for pipe/data-last composition (`gt`, `satisfies`, `bumpMajor`, etc.)
 - Strict SemVer 2.0.0 parsing with precise error positions (recursive descent, no regex)
 - Typed error channel for every operation -- handle `InvalidVersionError`, `UnsatisfiedRangeError`, and others explicitly
 - Range algebra: intersect, union, subset, equivalence, and simplification
-- Dual-style API: all comparison and matching functions support both `pipe` and direct call
 
 ## Installation
 
@@ -24,22 +24,38 @@ npm install semver-effect effect
 ## Quick Start
 
 ```typescript
-import { Effect, pipe } from "effect";
+import { Effect } from "effect";
 import { SemVer, Range } from "semver-effect";
 
-// Direct construction -- no parsing needed
-const v = SemVer.make(1, 4, 2);
-const next = SemVer.bump.minor(v);            // 1.5.0
-pipe(v, SemVer.gt(SemVer.make(0, 9, 0)));     // true
-
-// Parsing strings returns Effect with typed errors
 const program = Effect.gen(function* () {
-  const version = yield* SemVer.fromString("1.4.2");
-  const range = yield* Range.fromString("^1.2.0");
+  // Parse strings with static methods -- typed errors in the Effect channel
+  const v = yield* SemVer.parse("1.4.2");
+  const range = yield* Range.parse("^1.2.0");
 
-  Range.satisfies(version, range);             // true
-  SemVer.gt(version, yield* SemVer.fromString("1.3.0")); // true
-  SemVer.compare(version, yield* SemVer.fromString("2.0.0")); // -1
+  // Instance methods for comparison, bumping, and matching
+  range.test(v);                                              // true
+  v.gt(yield* SemVer.parse("1.3.0"));                        // true
+  v.compare(yield* SemVer.parse("2.0.0"));                   // -1
+  v.bump.minor().toString();                                  // "1.5.0"
+  v.isStable;                                                 // true
+});
+
+Effect.runSync(program);
+```
+
+Standalone functions are also available for pipe/data-last composition:
+
+```typescript
+import { Effect, pipe } from "effect";
+import { SemVer, parseValidSemVer, parseRange, bumpMinor, gt, satisfies } from "semver-effect";
+
+const program = Effect.gen(function* () {
+  const v = yield* parseValidSemVer("1.4.2");
+  const range = yield* parseRange("^1.2.0");
+
+  satisfies(v, range);                                        // true
+  pipe(v, gt(yield* parseValidSemVer("1.3.0")));              // true
+  bumpMinor(v).toString();                                    // "1.5.0"
 });
 
 Effect.runSync(program);
@@ -52,4 +68,4 @@ spec compliance details, see [docs/](./docs/).
 
 ## License
 
-MIT
+[MIT](LICENSE)

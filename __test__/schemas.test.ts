@@ -1,22 +1,22 @@
 import { Equal } from "effect";
 import { describe, expect, it } from "vitest";
-import * as Comparator from "../src/Comparator.js";
-import * as Range from "../src/Range.js";
-import * as SemVer from "../src/SemVer.js";
-import * as VersionDiff from "../src/VersionDiff.js";
+import { Comparator } from "../src/schemas/Comparator.js";
+import { Range } from "../src/schemas/Range.js";
+import { VersionDiff } from "../src/schemas/VersionDiff.js";
+import { make } from "./utils/make.js";
 
-const v = SemVer.make;
+const v = make;
 
 describe("Comparator", () => {
 	describe("Construction", () => {
 		it('has _tag of "Comparator"', () => {
-			const c = new Comparator.Comparator({ operator: "=", version: v(1, 0, 0) });
+			const c = new Comparator({ operator: "=", version: v(1, 0, 0) });
 			expect(c._tag).toBe("Comparator");
 		});
 
 		it("stores operator and version", () => {
 			const ver = v(2, 3, 4);
-			const c = new Comparator.Comparator({ operator: ">=", version: ver });
+			const c = new Comparator({ operator: ">=", version: ver });
 			expect(c.operator).toBe(">=");
 			expect(c.version.major).toBe(2);
 			expect(c.version.minor).toBe(3);
@@ -24,59 +24,59 @@ describe("Comparator", () => {
 		});
 
 		it.each(["=", ">", ">=", "<", "<="] as const)("accepts operator %s", (op) => {
-			const c = new Comparator.Comparator({ operator: op, version: v(1, 0, 0) });
+			const c = new Comparator({ operator: op, version: v(1, 0, 0) });
 			expect(c.operator).toBe(op);
 		});
 	});
 
 	describe("toString", () => {
 		it('"=" operator renders as empty string (just version)', () => {
-			const c = new Comparator.Comparator({ operator: "=", version: v(1, 2, 3) });
+			const c = new Comparator({ operator: "=", version: v(1, 2, 3) });
 			expect(c.toString()).toBe("1.2.3");
 		});
 
 		it('">" operator renders with prefix', () => {
-			const c = new Comparator.Comparator({ operator: ">", version: v(1, 0, 0) });
+			const c = new Comparator({ operator: ">", version: v(1, 0, 0) });
 			expect(c.toString()).toBe(">1.0.0");
 		});
 
 		it('">=" operator renders with prefix', () => {
-			const c = new Comparator.Comparator({ operator: ">=", version: v(2, 0, 0) });
+			const c = new Comparator({ operator: ">=", version: v(2, 0, 0) });
 			expect(c.toString()).toBe(">=2.0.0");
 		});
 
 		it('"<" operator renders with prefix', () => {
-			const c = new Comparator.Comparator({ operator: "<", version: v(3, 0, 0) });
+			const c = new Comparator({ operator: "<", version: v(3, 0, 0) });
 			expect(c.toString()).toBe("<3.0.0");
 		});
 
 		it('"<=" operator renders with prefix', () => {
-			const c = new Comparator.Comparator({ operator: "<=", version: v(4, 5, 6) });
+			const c = new Comparator({ operator: "<=", version: v(4, 5, 6) });
 			expect(c.toString()).toBe("<=4.5.6");
 		});
 
 		it("includes prerelease in output", () => {
-			const c = new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0, ["alpha", 1]) });
+			const c = new Comparator({ operator: ">=", version: v(1, 0, 0, ["alpha", 1]) });
 			expect(c.toString()).toBe(">=1.0.0-alpha.1");
 		});
 	});
 
 	describe("Structural equality", () => {
 		it("equal comparators are Equal.equals", () => {
-			const a = new Comparator.Comparator({ operator: ">=", version: v(1, 2, 3) });
-			const b = new Comparator.Comparator({ operator: ">=", version: v(1, 2, 3) });
+			const a = new Comparator({ operator: ">=", version: v(1, 2, 3) });
+			const b = new Comparator({ operator: ">=", version: v(1, 2, 3) });
 			expect(Equal.equals(a, b)).toBe(true);
 		});
 
 		it("different operators are not equal", () => {
-			const a = new Comparator.Comparator({ operator: ">", version: v(1, 0, 0) });
-			const b = new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0) });
+			const a = new Comparator({ operator: ">", version: v(1, 0, 0) });
+			const b = new Comparator({ operator: ">=", version: v(1, 0, 0) });
 			expect(Equal.equals(a, b)).toBe(false);
 		});
 
 		it("different versions are not equal", () => {
-			const a = new Comparator.Comparator({ operator: "=", version: v(1, 0, 0) });
-			const b = new Comparator.Comparator({ operator: "=", version: v(2, 0, 0) });
+			const a = new Comparator({ operator: "=", version: v(1, 0, 0) });
+			const b = new Comparator({ operator: "=", version: v(2, 0, 0) });
 			expect(Equal.equals(a, b)).toBe(false);
 		});
 	});
@@ -85,14 +85,14 @@ describe("Comparator", () => {
 describe("Range", () => {
 	describe("Construction", () => {
 		it('has _tag of "Range"', () => {
-			const r = new Range.Range({ sets: [] });
+			const r = new Range({ sets: [] });
 			expect(r._tag).toBe("Range");
 		});
 
 		it("stores sets (array of arrays of Comparators)", () => {
-			const c1 = new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0) });
-			const c2 = new Comparator.Comparator({ operator: "<", version: v(2, 0, 0) });
-			const r = new Range.Range({ sets: [[c1, c2]] });
+			const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) });
+			const c2 = new Comparator({ operator: "<", version: v(2, 0, 0) });
+			const r = new Range({ sets: [[c1, c2]] });
 			expect(r.sets).toHaveLength(1);
 			expect(r.sets[0]).toHaveLength(2);
 		});
@@ -100,48 +100,46 @@ describe("Range", () => {
 
 	describe("toString", () => {
 		it("joins comparators within a set with space", () => {
-			const c1 = new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0) });
-			const c2 = new Comparator.Comparator({ operator: "<", version: v(2, 0, 0) });
-			const r = new Range.Range({ sets: [[c1, c2]] });
+			const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) });
+			const c2 = new Comparator({ operator: "<", version: v(2, 0, 0) });
+			const r = new Range({ sets: [[c1, c2]] });
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0");
 		});
 
 		it('joins comparator sets with " || "', () => {
-			const c1 = new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0) });
-			const c2 = new Comparator.Comparator({ operator: "<", version: v(2, 0, 0) });
-			const c3 = new Comparator.Comparator({ operator: ">=", version: v(3, 0, 0) });
-			const r = new Range.Range({ sets: [[c1, c2], [c3]] });
+			const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) });
+			const c2 = new Comparator({ operator: "<", version: v(2, 0, 0) });
+			const c3 = new Comparator({ operator: ">=", version: v(3, 0, 0) });
+			const r = new Range({ sets: [[c1, c2], [c3]] });
 			expect(r.toString()).toBe(">=1.0.0 <2.0.0 || >=3.0.0");
 		});
 
 		it("empty sets produce empty string", () => {
-			const r = new Range.Range({ sets: [] });
+			const r = new Range({ sets: [] });
 			expect(r.toString()).toBe("");
 		});
 
 		it("single exact comparator renders without operator", () => {
-			const c = new Comparator.Comparator({ operator: "=", version: v(1, 2, 3) });
-			const r = new Range.Range({ sets: [[c]] });
+			const c = new Comparator({ operator: "=", version: v(1, 2, 3) });
+			const r = new Range({ sets: [[c]] });
 			expect(r.toString()).toBe("1.2.3");
 		});
 	});
 
 	describe("Structural equality", () => {
-		it("ranges with same comparator references are Equal.equals", () => {
-			const c1 = new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0) });
-			const c2 = new Comparator.Comparator({ operator: "<", version: v(2, 0, 0) });
-			const sets = [[c1, c2]];
-			const a = new Range.Range({ sets });
-			const b = new Range.Range({ sets });
-			expect(Equal.equals(a, b)).toBe(true);
+		it("same range instance is Equal.equals to itself", () => {
+			const c1 = new Comparator({ operator: ">=", version: v(1, 0, 0) });
+			const c2 = new Comparator({ operator: "<", version: v(2, 0, 0) });
+			const a = new Range({ sets: [[c1, c2]] });
+			expect(Equal.equals(a, a)).toBe(true);
 		});
 
 		it("different ranges are not equal", () => {
-			const a = new Range.Range({
-				sets: [[new Comparator.Comparator({ operator: ">=", version: v(1, 0, 0) })]],
+			const a = new Range({
+				sets: [[new Comparator({ operator: ">=", version: v(1, 0, 0) })]],
 			});
-			const b = new Range.Range({
-				sets: [[new Comparator.Comparator({ operator: ">=", version: v(2, 0, 0) })]],
+			const b = new Range({
+				sets: [[new Comparator({ operator: ">=", version: v(2, 0, 0) })]],
 			});
 			expect(Equal.equals(a, b)).toBe(false);
 		});
@@ -151,7 +149,7 @@ describe("Range", () => {
 describe("VersionDiff", () => {
 	describe("Construction", () => {
 		it('has _tag of "VersionDiff"', () => {
-			const d = new VersionDiff.VersionDiff({
+			const d = new VersionDiff({
 				type: "major",
 				from: v(1, 0, 0),
 				to: v(2, 0, 0),
@@ -163,7 +161,7 @@ describe("VersionDiff", () => {
 		});
 
 		it("stores type, from, to, and deltas", () => {
-			const d = new VersionDiff.VersionDiff({
+			const d = new VersionDiff({
 				type: "minor",
 				from: v(1, 2, 3),
 				to: v(1, 3, 0),
@@ -180,7 +178,7 @@ describe("VersionDiff", () => {
 		});
 
 		it.each(["major", "minor", "patch", "prerelease", "build", "none"] as const)('accepts type "%s"', (type) => {
-			const d = new VersionDiff.VersionDiff({
+			const d = new VersionDiff({
 				type,
 				from: v(1, 0, 0),
 				to: v(1, 0, 0),
@@ -194,7 +192,7 @@ describe("VersionDiff", () => {
 
 	describe("Structural equality", () => {
 		it("equal diffs are Equal.equals", () => {
-			const a = new VersionDiff.VersionDiff({
+			const a = new VersionDiff({
 				type: "patch",
 				from: v(1, 0, 0),
 				to: v(1, 0, 1),
@@ -202,7 +200,7 @@ describe("VersionDiff", () => {
 				minor: 0,
 				patch: 1,
 			});
-			const b = new VersionDiff.VersionDiff({
+			const b = new VersionDiff({
 				type: "patch",
 				from: v(1, 0, 0),
 				to: v(1, 0, 1),
@@ -214,7 +212,7 @@ describe("VersionDiff", () => {
 		});
 
 		it("different diffs are not equal", () => {
-			const a = new VersionDiff.VersionDiff({
+			const a = new VersionDiff({
 				type: "major",
 				from: v(1, 0, 0),
 				to: v(2, 0, 0),
@@ -222,7 +220,7 @@ describe("VersionDiff", () => {
 				minor: 0,
 				patch: 0,
 			});
-			const b = new VersionDiff.VersionDiff({
+			const b = new VersionDiff({
 				type: "minor",
 				from: v(1, 0, 0),
 				to: v(1, 1, 0),
@@ -234,7 +232,7 @@ describe("VersionDiff", () => {
 		});
 
 		it("same type but different deltas are not equal", () => {
-			const a = new VersionDiff.VersionDiff({
+			const a = new VersionDiff({
 				type: "patch",
 				from: v(1, 0, 0),
 				to: v(1, 0, 1),
@@ -242,7 +240,7 @@ describe("VersionDiff", () => {
 				minor: 0,
 				patch: 1,
 			});
-			const b = new VersionDiff.VersionDiff({
+			const b = new VersionDiff({
 				type: "patch",
 				from: v(1, 0, 0),
 				to: v(1, 0, 2),
@@ -257,7 +255,7 @@ describe("VersionDiff", () => {
 
 describe("VersionDiff toString and toJSON", () => {
 	it("toString formats as type (from -> to)", () => {
-		const d = new VersionDiff.VersionDiff({
+		const d = new VersionDiff({
 			type: "minor",
 			from: v(1, 2, 0),
 			to: v(1, 3, 0),
@@ -269,7 +267,7 @@ describe("VersionDiff toString and toJSON", () => {
 	});
 
 	it("toString with none type", () => {
-		const d = new VersionDiff.VersionDiff({
+		const d = new VersionDiff({
 			type: "none",
 			from: v(1, 0, 0),
 			to: v(1, 0, 0),
@@ -281,7 +279,7 @@ describe("VersionDiff toString and toJSON", () => {
 	});
 
 	it("toString with prerelease versions", () => {
-		const d = new VersionDiff.VersionDiff({
+		const d = new VersionDiff({
 			type: "prerelease",
 			from: v(1, 0, 0, ["alpha"]),
 			to: v(1, 0, 0, ["beta"]),
@@ -293,7 +291,7 @@ describe("VersionDiff toString and toJSON", () => {
 	});
 
 	it("toJSON includes _tag and all fields", () => {
-		const d = new VersionDiff.VersionDiff({
+		const d = new VersionDiff({
 			type: "major",
 			from: v(1, 0, 0),
 			to: v(2, 0, 0),
@@ -308,7 +306,7 @@ describe("VersionDiff toString and toJSON", () => {
 	});
 
 	it("toJSON nests from/to as SemVer JSON", () => {
-		const d = new VersionDiff.VersionDiff({
+		const d = new VersionDiff({
 			type: "patch",
 			from: v(1, 0, 0),
 			to: v(1, 0, 1),

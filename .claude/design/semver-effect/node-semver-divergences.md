@@ -3,8 +3,8 @@ status: current
 module: semver-effect
 category: architecture
 created: 2026-03-10
-updated: 2026-03-10
-last-synced: 2026-03-10
+updated: 2026-03-17
+last-synced: 2026-03-17
 completeness: 95
 related:
   - architecture.md
@@ -78,7 +78,7 @@ node-semver (strict-mode entries only).
 | Bump operations | Compatible | Same version outputs for valid inputs |
 | Error handling | Different | Typed errors vs null/throw |
 | API shape | Different | Effect-native vs imperative |
-| Data model | Different | Immutable Data.TaggedClass vs mutable class |
+| Data model | Different | Immutable Schema.TaggedClass vs mutable class |
 | Coercion | Not supported | No equivalent |
 | v-prefix tolerance | Not supported | Always rejected |
 
@@ -153,8 +153,8 @@ semver-effect function returns an `Effect`.
 
 | node-semver | semver-effect |
 | :--- | :--- |
-| `semver.valid("1.2.3") // "1.2.3"` | `parseVersion("1.2.3") // Effect<SemVer, InvalidVersionError>` |
-| `semver.valid("bad") // null` | `parseVersion("bad") // Effect<never, InvalidVersionError>` |
+| `semver.valid("1.2.3") // "1.2.3"` | `parseValidSemVer("1.2.3") // Effect<SemVer, InvalidVersionError>` |
+| `semver.valid("bad") // null` | `parseValidSemVer("bad") // Effect<never, InvalidVersionError>` |
 | `semver.satisfies("1.2.3", "^1.0.0") // true` | `satisfies(v, range) // boolean` (pure, no Effect) |
 | `semver.maxSatisfying(vs, "^1.0.0") // "1.2.3"` | `maxSatisfying(vs, range) // Option<SemVer>` |
 | `semver.inc("1.2.3", "minor") // "1.3.0"` | `bumpMinor(v) // SemVer` (pure, no Effect) |
@@ -187,9 +187,9 @@ This eliminates the ambiguity where `false` could mean "not greater" or
 
 node-semver exposes standalone functions. semver-effect exposes both:
 
-- **Standalone convenience functions:** `parseVersion`, `parseRange`,
-  `parseComparator` (no Layer required)
-- **Service interface:** `SemVerParser` via `Context.GenericTag` + Layer
+- **Standalone convenience functions:** `parseValidSemVer`, `parseRange`,
+  `parseSingleComparator` (no Layer required)
+- **Service interface:** `SemVerParser` via class-based `Context.Tag` + Layer
   pattern (for dependency injection and testing)
 
 ### Dual Calling Convention
@@ -279,7 +279,7 @@ semver.inc("1.0.0", "bad")   // null (what went wrong?)
 **semver-effect pattern:**
 
 ```typescript
-parseVersion("bad")
+parseValidSemVer("bad")
 // Effect<never, InvalidVersionError{ input: "bad", position: 3 }>
 
 satisfies(v, range)
@@ -323,7 +323,7 @@ information in its error messages. This is documented in node-semver issues
 node-semver's `SemVer` class is mutable. `inc()` mutates the instance in
 place. Users must clone before bumping (node-semver issue #378).
 
-semver-effect's `SemVer` is an immutable `Data.TaggedClass`. All bump
+semver-effect's `SemVer` is an immutable `Schema.TaggedClass`. All bump
 operations return new instances.
 
 ### Structural Equality vs instanceof
@@ -393,9 +393,9 @@ works directly on SemVer fields with no allocations.
 
 | node-semver | semver-effect | Difference |
 | :--- | :--- | :--- |
-| `semver.inc(v, "major")` | `bumpMajor(v)` | Standalone function, returns new SemVer |
-| `semver.inc(v, "minor")` | `bumpMinor(v)` | Standalone function, returns new SemVer |
-| `semver.inc(v, "patch")` | `bumpPatch(v)` | Standalone function, returns new SemVer |
+| `semver.inc(v, "major")` | `bumpMajor(v)` | Flat export, returns new SemVer |
+| `semver.inc(v, "minor")` | `bumpMinor(v)` | Flat export, returns new SemVer |
+| `semver.inc(v, "patch")` | `bumpPatch(v)` | Flat export, returns new SemVer |
 | `semver.inc(v, "prerelease", id)` | `bumpPrerelease(v, id?)` | Separate function with optional id |
 | (no equivalent) | `bumpRelease(v)` | Strips prerelease and build |
 
@@ -458,7 +458,7 @@ The following node-semver features are intentionally not implemented:
 | Loose parsing mode | Strict SemVer 2.0.0 only |
 | `coerce()` | No coercion; inputs must be valid |
 | `clean()` | No cleaning; inputs must be valid |
-| `valid()` returning string | Use `parseVersion` returning Effect |
+| `valid()` returning string | Use `parseValidSemVer` returning Effect |
 | `validRange()` returning string | Use `parseRange` returning Effect |
 | `includePrerelease` option | Strict same-tuple policy always enforced |
 | `premajor`/`preminor`/`prepatch` compound bumps | Use `bumpPrerelease` after bumping |
@@ -489,7 +489,7 @@ Features in semver-effect with no node-semver equivalent:
 | `compareWithBuild(a, b)` | Build-aware comparison |
 | Effect service pattern | DI, testability, composability |
 | Dual calling convention | Data-first and data-last on all binary ops |
-| Immutable data types | Data.TaggedClass with Equal/Hash/Inspectable |
+| Immutable data types | Schema.TaggedClass with Equal/Hash/Inspectable |
 
 ---
 
