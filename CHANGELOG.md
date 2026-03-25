@@ -1,5 +1,11 @@
 # semver-effect
 
+## 0.2.1
+
+### Tests
+
+* [`4ef47a4`](https://github.com/spencerbeggs/semver-effect/commit/4ef47a4d842d92a25dfa3243eff90aa9ad9c8003) Align with new test harness
+
 ## 0.2.0
 
 ### Breaking Changes
