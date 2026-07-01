@@ -1,5 +1,27 @@
 # semver-effect
 
+## 0.3.0
+
+### Documentation
+
+* [`b9e998f`](https://github.com/spencerbeggs/semver-effect/commit/b9e998fd27b2d8e6816c91afb7c491923fc56b9c) TSDoc comments across `errors/`, `schemas/`, `services/`, `layers/`, and `utils/` now conform to the API Extractor toolchain (proper release tags, resolved `tsdoc-*` warnings). No runtime behavior changes.
+
+### Build System
+
+* [`b9e998f`](https://github.com/spencerbeggs/semver-effect/commit/b9e998fd27b2d8e6816c91afb7c491923fc56b9c) Migrated `savvy.build.ts` to the `@savvy-web/bundler@^1.1.0` `build()` API, replacing the previous `defineBuild` / `runBuild` pair
+* Added a sanctioned `ae-forgotten-export` suppression (matching the `_base` pattern) for the synthetic intermediate classes Effect's `Context.Tag` generates, which cannot themselves be exported or release-tagged
+* The production build now completes with 0 API Extractor warnings and 0 errors
+
+### Dependencies
+
+* [`b9e998f`](https://github.com/spencerbeggs/semver-effect/commit/b9e998fd27b2d8e6816c91afb7c491923fc56b9c) | Dependency | Type | Action | From | To |
+  \| -------------------------- | ------------- | ------- | ------ | --------------------- |
+  \| @savvy-web/bundler | devDependency | updated | ^1.0.1 | ^1.1.0 |
+  \| @vitest-agent/plugin | devDependency | updated | ^1.1.2 | ^1.1.3 |
+  \| @types/node | devDependency | added | — | ^26.0.1 |
+  \| @typescript/native-preview | devDependency | added | — | ^7.0.0-dev.20260630.1 |
+  \| typescript | devDependency | added | — | ^6.0.3 |
+
 ## 0.2.1
 
 ### Tests
