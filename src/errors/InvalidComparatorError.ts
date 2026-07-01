@@ -4,11 +4,12 @@ import { Data } from "effect";
  * Tagged error base for {@link InvalidComparatorError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `InvalidComparatorError` appears in public type signatures.
- * Consumers should use {@link InvalidComparatorError} directly.
+ * Marked `@public` (rather than `@internal`) because `InvalidComparatorError` extends
+ * it directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use
+ * {@link InvalidComparatorError} directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const InvalidComparatorErrorBase = Data.TaggedError("InvalidComparatorError");
 
@@ -20,6 +21,7 @@ export const InvalidComparatorErrorBase = Data.TaggedError("InvalidComparatorErr
  * Wildcards and range syntax are not allowed in single comparator parsing.
  *
  * @see {@link Comparator}
+ * @public
  */
 export class InvalidComparatorError extends InvalidComparatorErrorBase<{
 	/** The raw input string that failed to parse. */

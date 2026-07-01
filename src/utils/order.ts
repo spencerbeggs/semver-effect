@@ -2,19 +2,21 @@ import { Order } from "effect";
 import type { SemVer } from "../schemas/SemVer.js";
 
 /**
- * Effect {@link Order.Order} instance for {@link SemVer} following SemVer 2.0.0
- * precedence rules. Delegates to {@link SemVer.compare}.
+ * Effect `Order.Order` instance for {@link SemVer} following SemVer 2.0.0
+ * precedence rules. Delegates to `SemVer`'s `compare` instance method.
  *
  * @see {@link SemVerOrderWithBuild}
  * @see {@link https://semver.org/#spec-item-11 | SemVer 2.0.0 Section 11}
+ * @public
  */
 export const SemVerOrder: Order.Order<SemVer> = Order.make((a, b) => a.compare(b));
 
 /**
- * Effect {@link Order.Order} instance for {@link SemVer} that additionally
+ * Effect `Order.Order` instance for {@link SemVer} that additionally
  * compares build metadata when versions are otherwise equal.
  *
  * @see {@link SemVerOrder}
+ * @public
  */
 export const SemVerOrderWithBuild: Order.Order<SemVer> = Order.make((a, b) => {
 	const base = a.compare(b);

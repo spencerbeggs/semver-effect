@@ -8,6 +8,7 @@ import type { VersionDiff } from "../schemas/VersionDiff.js";
  * Union of all schema types that can be pretty-printed by {@link prettyPrint}.
  *
  * @see {@link prettyPrint}
+ * @public
  */
 export type Printable = SemVer | Comparator | Range | VersionDiff;
 
@@ -38,5 +39,6 @@ const matcher = Match.type<Printable>().pipe(
  * ```
  *
  * @see {@link Printable}
+ * @public
  */
 export const prettyPrint = (value: Printable): string => matcher(value);

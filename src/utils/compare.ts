@@ -25,6 +25,7 @@ import { SemVerOrder, SemVerOrderWithBuild } from "./order.js";
  *
  * @see {@link SemVerOrder}
  * @see {@link https://semver.org/#spec-item-11 | SemVer 2.0.0 Section 11}
+ * @public
  */
 export const compare: {
 	(that: SemVer): (self: SemVer) => -1 | 0 | 1;
@@ -34,13 +35,14 @@ export const compare: {
 /**
  * Test whether two {@link SemVer} versions are equal.
  *
- * Uses Effect structural equality ({@link Equal.equals}), which compares
+ * Uses Effect structural equality (`Equal.equals`), which compares
  * `major.minor.patch` and prerelease identifiers but ignores build metadata.
  *
  * For the instance method alternative, use `v.eq(other)`.
  *
  * @see {@link neq}
  * @see {@link compare}
+ * @public
  */
 export const equal: {
 	(that: SemVer): (self: SemVer) => boolean;
@@ -54,6 +56,7 @@ export const equal: {
  *
  * @see {@link gte}
  * @see {@link compare}
+ * @public
  */
 export const gt: {
 	(that: SemVer): (self: SemVer) => boolean;
@@ -67,6 +70,7 @@ export const gt: {
  *
  * @see {@link gt}
  * @see {@link compare}
+ * @public
  */
 export const gte: {
 	(that: SemVer): (self: SemVer) => boolean;
@@ -80,6 +84,7 @@ export const gte: {
  *
  * @see {@link lte}
  * @see {@link compare}
+ * @public
  */
 export const lt: {
 	(that: SemVer): (self: SemVer) => boolean;
@@ -93,6 +98,7 @@ export const lt: {
  *
  * @see {@link lt}
  * @see {@link compare}
+ * @public
  */
 export const lte: {
 	(that: SemVer): (self: SemVer) => boolean;
@@ -105,6 +111,7 @@ export const lte: {
  * For the instance method alternative, use `v.neq(other)`.
  *
  * @see {@link equal}
+ * @public
  */
 export const neq: {
 	(that: SemVer): (self: SemVer) => boolean;
@@ -117,6 +124,7 @@ export const neq: {
  * For the instance getter alternative, use `v.isPrerelease`.
  *
  * @see {@link isStable}
+ * @public
  */
 export const isPrerelease = (v: SemVer): boolean => v.prerelease.length > 0;
 
@@ -126,6 +134,7 @@ export const isPrerelease = (v: SemVer): boolean => v.prerelease.length > 0;
  * For the instance getter alternative, use `v.isStable`.
  *
  * @see {@link isPrerelease}
+ * @public
  */
 export const isStable = (v: SemVer): boolean => v.prerelease.length === 0;
 
@@ -148,6 +157,8 @@ export const isStable = (v: SemVer): boolean => v.prerelease.length === 0;
  *   console.log(truncate(v, "build").toString());      // "1.2.3-alpha.1"
  * });
  * ```
+ *
+ * @public
  */
 export const truncate: {
 	(level: "prerelease" | "build"): (v: SemVer) => SemVer;
@@ -173,6 +184,7 @@ export const truncate: {
  *
  * @see {@link rsort}
  * @see {@link SemVerOrder}
+ * @public
  */
 export const sort = (versions: ReadonlyArray<SemVer>): Array<SemVer> => [...versions].sort(SemVerOrder);
 
@@ -183,6 +195,7 @@ export const sort = (versions: ReadonlyArray<SemVer>): Array<SemVer> => [...vers
  *
  * @see {@link sort}
  * @see {@link SemVerOrder}
+ * @public
  */
 export const rsort = (versions: ReadonlyArray<SemVer>): Array<SemVer> =>
 	[...versions].sort((a, b) => SemVerOrder(b, a));
@@ -194,6 +207,7 @@ export const rsort = (versions: ReadonlyArray<SemVer>): Array<SemVer> =>
  *
  * @see {@link min}
  * @see {@link sort}
+ * @public
  */
 export const max = (versions: ReadonlyArray<SemVer>): Option.Option<SemVer> => {
 	if (versions.length === 0) return Option.none();
@@ -213,6 +227,7 @@ export const max = (versions: ReadonlyArray<SemVer>): Option.Option<SemVer> => {
  *
  * @see {@link max}
  * @see {@link sort}
+ * @public
  */
 export const min = (versions: ReadonlyArray<SemVer>): Option.Option<SemVer> => {
 	if (versions.length === 0) return Option.none();
@@ -235,6 +250,7 @@ export const min = (versions: ReadonlyArray<SemVer>): Option.Option<SemVer> => {
  *
  * @see {@link compare}
  * @see {@link SemVerOrderWithBuild}
+ * @public
  */
 export const compareWithBuild: {
 	(that: SemVer): (self: SemVer) => -1 | 0 | 1;

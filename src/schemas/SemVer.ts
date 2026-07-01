@@ -31,6 +31,7 @@ const comparePre = (a: string | number, b: string | number): number => {
  * ```
  *
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @public
  */
 export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 	major: Schema.Number,
@@ -252,7 +253,11 @@ export class SemVer extends Schema.TaggedClass<SemVer>()("SemVer", {
 
 // ── Bump helper ─────────────────────────────────────────────────────────
 
-/** Grouped bump operations returned by {@link SemVer.bump}. */
+/**
+ * Grouped bump operations returned by {@link SemVer.bump}.
+ *
+ * @public
+ */
 export class SemVerBump {
 	constructor(private readonly v: SemVer) {}
 

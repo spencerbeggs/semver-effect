@@ -23,6 +23,7 @@ import type { SemVer } from "../schemas/SemVer.js";
  * @see {@link filter}
  * @see {@link maxSatisfying}
  * @see {@link minSatisfying}
+ * @public
  */
 export const satisfies: {
 	(range: Range): (version: SemVer) => boolean;
@@ -35,6 +36,7 @@ export const satisfies: {
  * For the instance method alternative, use `range.filter(versions)`.
  *
  * @see {@link satisfies}
+ * @public
  */
 export const filter: {
 	(range: Range): (versions: ReadonlyArray<SemVer>) => ReadonlyArray<SemVer>;
@@ -48,6 +50,7 @@ export const filter: {
  *
  * @see {@link minSatisfying}
  * @see {@link satisfies}
+ * @public
  */
 export const maxSatisfying: {
 	(range: Range): (versions: ReadonlyArray<SemVer>) => Option.Option<SemVer>;
@@ -69,6 +72,7 @@ export const maxSatisfying: {
  *
  * @see {@link maxSatisfying}
  * @see {@link satisfies}
+ * @public
  */
 export const minSatisfying: {
 	(range: Range): (versions: ReadonlyArray<SemVer>) => Option.Option<SemVer>;

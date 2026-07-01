@@ -4,11 +4,12 @@ import { Data } from "effect";
  * Tagged error base for {@link VersionFetchError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `VersionFetchError` appears in public type signatures.
- * Consumers should use {@link VersionFetchError} directly.
+ * Marked `@public` (rather than `@internal`) because `VersionFetchError` extends it
+ * directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use
+ * {@link VersionFetchError} directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const VersionFetchErrorBase = Data.TaggedError("VersionFetchError");
 
@@ -20,6 +21,7 @@ export const VersionFetchErrorBase = Data.TaggedError("VersionFetchError");
  * and `cause` may contain the underlying error.
  *
  * @see {@link VersionFetcher}
+ * @public
  */
 export class VersionFetchError extends VersionFetchErrorBase<{
 	/** The source identifier (e.g., registry URL or package name). */

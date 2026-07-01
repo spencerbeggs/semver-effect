@@ -12,6 +12,7 @@
 **/.coverage
 **/.vitest
 **/.cache
+**/.claude/cache
 coverage/
 **/*.asc
 pnpm-publish-summary.json

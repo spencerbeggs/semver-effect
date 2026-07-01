@@ -24,6 +24,7 @@ import type { SemVer } from "../schemas/SemVer.js";
  * @see {@link VersionFetchError}
  * @see {@link VersionCache}
  * @see {@link https://effect.website/docs/context-management/services | Effect Services}
+ * @public
  */
 export class VersionFetcher extends Context.Tag("semver-effect/VersionFetcher")<
 	VersionFetcher,

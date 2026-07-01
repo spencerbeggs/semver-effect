@@ -8,6 +8,7 @@ import type { SemVer } from "./SemVer.js";
  * semantics. A version must satisfy every comparator in the set to match.
  *
  * @see {@link Range}
+ * @public
  */
 export type ComparatorSet = ReadonlyArray<Comparator>;
 
@@ -29,6 +30,7 @@ export type ComparatorSet = ReadonlyArray<Comparator>;
  * @see {@link Comparator}
  * @see {@link ComparatorSet}
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @public
  */
 export class Range extends Schema.TaggedClass<Range>()("Range", {
 	sets: Schema.Array(Schema.Array(Comparator)),

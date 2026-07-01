@@ -32,6 +32,7 @@ import { SemVer } from "./SemVer.js";
  *
  * @see {@link diff}
  * @see {@link SemVer}
+ * @public
  */
 export class VersionDiff extends Schema.TaggedClass<VersionDiff>()("VersionDiff", {
 	type: Schema.Literal("major", "minor", "patch", "prerelease", "build", "none"),
