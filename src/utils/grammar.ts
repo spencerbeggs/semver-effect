@@ -195,7 +195,7 @@ const parseBuild = makeParseBuild(parseBuildIdentifier);
  *
  * Rejects `v`/`V` prefixes, `=` prefixes, leading zeros on numeric identifiers,
  * and any input that does not fully consume as a valid `major.minor.patch[-prerelease][+build]`
- * string. Returns an {@link Effect.Effect} that fails with {@link InvalidVersionError}
+ * string. Returns an `Effect.Effect` that fails with {@link InvalidVersionError}
  * on invalid input.
  *
  * @example
@@ -212,6 +212,7 @@ const parseBuild = makeParseBuild(parseBuildIdentifier);
  * @see {@link SemVer}
  * @see {@link InvalidVersionError}
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @public
  */
 export const parseValidSemVer = (raw: string): Effect.Effect<SemVer, InvalidVersionError> =>
 	Effect.gen(function* () {
@@ -537,6 +538,7 @@ export const parseRangeSet = (raw: string): Effect.Effect<Range, InvalidRangeErr
  *
  * @see {@link Comparator}
  * @see {@link InvalidComparatorError}
+ * @public
  */
 export const parseSingleComparator = (raw: string): Effect.Effect<Comparator, InvalidComparatorError> =>
 	Effect.gen(function* () {

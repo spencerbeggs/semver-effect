@@ -4,11 +4,12 @@ import { Data } from "effect";
  * Tagged error base for {@link InvalidRangeError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `InvalidRangeError` appears in public type signatures.
- * Consumers should use {@link InvalidRangeError} directly.
+ * Marked `@public` (rather than `@internal`) because `InvalidRangeError` extends it
+ * directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use {@link InvalidRangeError}
+ * directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const InvalidRangeErrorBase = Data.TaggedError("InvalidRangeError");
 
@@ -22,6 +23,7 @@ export const InvalidRangeErrorBase = Data.TaggedError("InvalidRangeError");
  *
  * @see {@link Range}
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @public
  */
 export class InvalidRangeError extends InvalidRangeErrorBase<{
 	/** The raw input string that failed to parse. */

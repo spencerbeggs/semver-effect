@@ -5,11 +5,12 @@ import type { SemVer } from "../schemas/SemVer.js";
  * Tagged error base for {@link InvalidBumpError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `InvalidBumpError` appears in public type signatures.
- * Consumers should use {@link InvalidBumpError} directly.
+ * Marked `@public` (rather than `@internal`) because `InvalidBumpError` extends it
+ * directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use {@link InvalidBumpError}
+ * directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const InvalidBumpErrorBase = Data.TaggedError("InvalidBumpError");
 
@@ -21,6 +22,7 @@ export const InvalidBumpErrorBase = Data.TaggedError("InvalidBumpError");
  * @see {@link bumpPatch}
  * @see {@link bumpPrerelease}
  * @see {@link bumpRelease}
+ * @public
  */
 export class InvalidBumpError extends InvalidBumpErrorBase<{
 	/** The version that the bump was attempted on. */

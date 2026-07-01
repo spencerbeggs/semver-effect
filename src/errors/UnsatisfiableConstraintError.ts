@@ -5,11 +5,12 @@ import type { Range } from "../schemas/Range.js";
  * Tagged error base for {@link UnsatisfiableConstraintError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `UnsatisfiableConstraintError` appears in public type signatures.
- * Consumers should use {@link UnsatisfiableConstraintError} directly.
+ * Marked `@public` (rather than `@internal`) because `UnsatisfiableConstraintError`
+ * extends it directly: API Extractor requires a class's release tag to be at least
+ * as public as every type in its `extends` clause. Consumers should use
+ * {@link UnsatisfiableConstraintError} directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const UnsatisfiableConstraintErrorBase = Data.TaggedError("UnsatisfiableConstraintError");
 
@@ -22,6 +23,7 @@ export const UnsatisfiableConstraintErrorBase = Data.TaggedError("UnsatisfiableC
  *
  * @see {@link intersect}
  * @see {@link Range}
+ * @public
  */
 export class UnsatisfiableConstraintError extends UnsatisfiableConstraintErrorBase<{
 	/** The ranges that were being intersected. */

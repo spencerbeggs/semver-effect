@@ -19,6 +19,7 @@ import { SemVer } from "./SemVer.js";
  *
  * @see {@link Range}
  * @see {@link SemVer}
+ * @public
  */
 export class Comparator extends Schema.TaggedClass<Comparator>()("Comparator", {
 	operator: Schema.Literal("=", ">", ">=", "<", "<="),

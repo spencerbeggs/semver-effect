@@ -31,6 +31,7 @@ import type { SemVer } from "../schemas/SemVer.js";
  *
  * @see {@link SemVerParserLive}
  * @see {@link https://effect.website/docs/context-management/services | Effect Services}
+ * @public
  */
 export class SemVerParser extends Context.Tag("semver-effect/SemVerParser")<
 	SemVerParser,

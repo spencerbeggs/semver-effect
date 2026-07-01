@@ -6,22 +6,24 @@ import type { SemVer } from "../schemas/SemVer.js";
  * Tagged error base for {@link UnsatisfiedRangeError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `UnsatisfiedRangeError` appears in public type signatures.
- * Consumers should use {@link UnsatisfiedRangeError} directly.
+ * Marked `@public` (rather than `@internal`) because `UnsatisfiedRangeError` extends
+ * it directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use
+ * {@link UnsatisfiedRangeError} directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const UnsatisfiedRangeErrorBase = Data.TaggedError("UnsatisfiedRangeError");
 
 /**
  * Indicates that no version in a given set satisfies a {@link Range}.
  *
- * Returned by {@link VersionCache.resolve} and {@link VersionCache.resolveString}
+ * Returned by `VersionCache.resolve` and `VersionCache.resolveString`
  * when the cache contains versions but none match the requested range.
  *
  * @see {@link VersionCache}
  * @see {@link Range}
+ * @public
  */
 export class UnsatisfiedRangeError extends UnsatisfiedRangeErrorBase<{
 	/** The range that could not be satisfied. */

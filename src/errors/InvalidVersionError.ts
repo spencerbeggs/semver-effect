@@ -4,11 +4,12 @@ import { Data } from "effect";
  * Tagged error base for {@link InvalidVersionError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `InvalidVersionError` appears in public type signatures.
- * Consumers should use {@link InvalidVersionError} directly.
+ * Marked `@public` (rather than `@internal`) because `InvalidVersionError` extends it
+ * directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use
+ * {@link InvalidVersionError} directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const InvalidVersionErrorBase = Data.TaggedError("InvalidVersionError");
 
@@ -20,6 +21,7 @@ export const InvalidVersionErrorBase = Data.TaggedError("InvalidVersionError");
  * format. Unlike node-semver, no loose parsing or `v`-prefix coercion is performed.
  *
  * @see {@link https://semver.org | SemVer 2.0.0 Specification}
+ * @public
  */
 export class InvalidVersionError extends InvalidVersionErrorBase<{
 	/** The raw input string that failed to parse. */

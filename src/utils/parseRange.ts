@@ -8,8 +8,8 @@ import { normalizeRange } from "./normalize.js";
  * Parse a SemVer range expression string and normalize the result.
  *
  * This is a convenience function that performs the same parsing and normalization
- * as {@link SemVerParser.parseRange} but without requiring the service in scope.
- * Returns an {@link Effect.Effect} that fails with {@link InvalidRangeError}
+ * as `SemVerParser`'s `parseRange` method but without requiring the service in scope.
+ * Returns an `Effect.Effect` that fails with {@link InvalidRangeError}
  * on invalid input.
  *
  * Supports hyphen ranges (`1.0.0 - 2.0.0`), X-ranges (`1.x`, `*`), tilde
@@ -31,6 +31,7 @@ import { normalizeRange } from "./normalize.js";
  * @see {@link Range}
  * @see {@link SemVerParser}
  * @see {@link InvalidRangeError}
+ * @public
  */
 export const parseRange = (input: string): Effect.Effect<Range, InvalidRangeError> =>
 	Effect.map(parseRangeSet(input), normalizeRange);

@@ -37,6 +37,7 @@ const classifyDiff = (a: SemVer, b: SemVer): "major" | "minor" | "patch" | "prer
  * ```
  *
  * @see {@link VersionDiff}
+ * @public
  */
 export const diff: {
 	(b: SemVer): (a: SemVer) => VersionDiff;

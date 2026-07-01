@@ -35,7 +35,7 @@ const requireNonEmptySet = (
 };
 
 /**
- * Live Effect {@link Layer} that provides the {@link VersionCache} service.
+ * Live Effect `Layer` that provides the {@link VersionCache} service.
  *
  * Backed by an Effect `Ref` containing a `SortedSet` ordered by {@link SemVerOrder}.
  * Requires a {@link SemVerParser} in its dependency graph (used by `resolveString`
@@ -59,6 +59,7 @@ const requireNonEmptySet = (
  * @see {@link VersionCache}
  * @see {@link SemVerParserLive}
  * @see {@link https://effect.website/docs/context-management/layers | Effect Layers}
+ * @public
  */
 export const VersionCacheLive: Layer.Layer<VersionCache, never, SemVerParser> = Layer.effect(
 	VersionCache,

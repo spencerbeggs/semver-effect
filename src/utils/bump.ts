@@ -16,6 +16,7 @@ import type { SemVer } from "../schemas/SemVer.js";
  *
  * @see {@link bumpMinor}
  * @see {@link bumpPatch}
+ * @public
  */
 export const bumpMajor = (v: SemVer): SemVer => v.bump.major();
 
@@ -24,6 +25,7 @@ export const bumpMajor = (v: SemVer): SemVer => v.bump.major();
  *
  * @see {@link bumpMajor}
  * @see {@link bumpPatch}
+ * @public
  */
 export const bumpMinor = (v: SemVer): SemVer => v.bump.minor();
 
@@ -32,6 +34,7 @@ export const bumpMinor = (v: SemVer): SemVer => v.bump.minor();
  *
  * @see {@link bumpMajor}
  * @see {@link bumpMinor}
+ * @public
  */
 export const bumpPatch = (v: SemVer): SemVer => v.bump.patch();
 
@@ -54,6 +57,7 @@ export const bumpPatch = (v: SemVer): SemVer => v.bump.patch();
  * ```
  *
  * @see {@link bumpRelease}
+ * @public
  */
 export const bumpPrerelease = (v: SemVer, id?: string): SemVer => v.bump.prerelease(id);
 
@@ -72,5 +76,6 @@ export const bumpPrerelease = (v: SemVer, id?: string): SemVer => v.bump.prerele
  * ```
  *
  * @see {@link bumpPrerelease}
+ * @public
  */
 export const bumpRelease = (v: SemVer): SemVer => v.bump.release();

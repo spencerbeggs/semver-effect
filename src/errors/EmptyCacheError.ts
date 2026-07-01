@@ -4,11 +4,12 @@ import { Data } from "effect";
  * Tagged error base for {@link EmptyCacheError}.
  *
  * @privateRemarks
- * Exported because TypeScript declaration bundling requires the base class to be
- * accessible when `EmptyCacheError` appears in public type signatures.
- * Consumers should use {@link EmptyCacheError} directly.
+ * Marked `@public` (rather than `@internal`) because `EmptyCacheError` extends it
+ * directly: API Extractor requires a class's release tag to be at least as public
+ * as every type in its `extends` clause. Consumers should use {@link EmptyCacheError}
+ * directly rather than referencing this base.
  *
- * @internal
+ * @public
  */
 export const EmptyCacheErrorBase = Data.TaggedError("EmptyCacheError");
 
@@ -19,6 +20,7 @@ export const EmptyCacheErrorBase = Data.TaggedError("EmptyCacheError");
  * `groupBy`) when no versions have been loaded into the cache.
  *
  * @see {@link VersionCache}
+ * @public
  */
 export class EmptyCacheError extends EmptyCacheErrorBase {
 	get message(): string {

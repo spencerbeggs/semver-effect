@@ -81,6 +81,7 @@ const isSetSatisfiable = (set: ReadonlyArray<Comparator>): boolean => {
  *
  * @see {@link intersect}
  * @see {@link equivalent}
+ * @public
  */
 export const union: {
 	(b: Range): (a: Range) => Range;
@@ -92,7 +93,7 @@ export const union: {
  * their comparator sets.
  *
  * The resulting range matches only versions that satisfy both input ranges.
- * Returns an {@link Effect.Effect} that fails with
+ * Returns an `Effect.Effect` that fails with
  * {@link UnsatisfiableConstraintError} when no satisfiable comparator set
  * remains after intersection.
  *
@@ -111,6 +112,7 @@ export const union: {
  *
  * @see {@link union}
  * @see {@link UnsatisfiableConstraintError}
+ * @public
  */
 export const intersect: {
 	(b: Range): (a: Range) => Effect.Effect<Range, UnsatisfiableConstraintError>;
@@ -192,6 +194,7 @@ const isComparatorSetSubset = (sub: ReadonlyArray<Comparator>, sup: ReadonlyArra
  *
  * @see {@link equivalent}
  * @see {@link intersect}
+ * @public
  */
 export const isSubset: {
 	(sup: Range): (sub: Range) => boolean;
@@ -211,6 +214,7 @@ export const isSubset: {
  * meaning they match exactly the same set of versions.
  *
  * @see {@link isSubset}
+ * @public
  */
 export const equivalent: {
 	(b: Range): (a: Range) => boolean;
@@ -226,6 +230,7 @@ export const equivalent: {
  *
  * @see {@link isSubset}
  * @see {@link equivalent}
+ * @public
  */
 export const simplify = (range: Range): Range => {
 	const sets = range.sets.filter((set, i) => {

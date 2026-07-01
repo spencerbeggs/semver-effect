@@ -35,6 +35,7 @@ import type { VersionDiff } from "../schemas/VersionDiff.js";
  *
  * @see {@link VersionCacheLive}
  * @see {@link https://effect.website/docs/context-management/services | Effect Services}
+ * @public
  */
 export class VersionCache extends Context.Tag("semver-effect/VersionCache")<
 	VersionCache,
