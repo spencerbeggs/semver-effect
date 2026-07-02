@@ -1,5 +1,11 @@
 # semver-effect
 
+## 0.3.1
+
+### Bug Fixes
+
+* [`1cafcf2`](https://github.com/spencerbeggs/semver-effect/commit/1cafcf20b6a15cfc7fbb9a69c08723e9e93488c6) Barrel marked with side effects for bundling.
+
 ## 0.3.0
 
 ### Documentation
