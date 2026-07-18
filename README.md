@@ -1,5 +1,11 @@
 # semver-effect
 
+> [!CAUTION]
+> **This package is deprecated and no longer maintained.**
+> All functionality has been migrated to [`@effected/semver`](https://www.npmjs.com/package/@effected/semver)
+> Source code live in the [Effected monorepo](https://github.com/spencerbeggs/effected).
+> No further releases, fixes or security patches will be published here.
+
 [![npm version](https://img.shields.io/npm/v/semver-effect)](https://www.npmjs.com/package/semver-effect)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
